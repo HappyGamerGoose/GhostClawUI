@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GhostClawUI.App/GhostClawUI.App.csproj" />
+    <Project Path="src/GhostClawUI.Service/GhostClawUI.Service.csproj" />
+    <Project Path="src/GhostClawUI.Shared/GhostClawUI.Shared.csproj" />
+  </Folder>
+</Solution>

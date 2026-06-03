@@ -58,7 +58,7 @@ If you want to build the project from source:
 #### Build Instructions
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/GhostClawUI.git
+   git clone https://github.com/HappyGamerGoose/GhostClawUI.git
    cd GhostClawUI
    ```
 2. Open `GhostClawUI.sln` in Visual Studio.
@@ -74,6 +74,10 @@ The application is split into two primary components:
 2. **GhostClawUI.Service**: A robust background daemon that manages the SQLite database, MCP server processes, Telegram polling, and securely orchestrates LLM API calls.
 
 They communicate via a high-performance Named Pipe IPC connection to ensure the UI thread remains completely unblocked.
+
+## Credits
+
+This project is a native UI built upon the original **[GhostClaw](https://github.com/b1rdmania/ghostclaw)** autonomous agent framework. All credit for the core agent architecture goes to the original creator!
 
 ## License
 

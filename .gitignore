@@ -27,3 +27,7 @@ artifacts/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Release Packages
+GhostClawUI_*_Release.zip
+ReleaseBundle/

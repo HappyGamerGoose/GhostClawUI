@@ -81,4 +81,4 @@ This project is a native UI built upon the original **[GhostClaw](https://github
 
 ## License
 
-MIT License. See `LICENSE` for more information.
+Apache License 2.0. See `LICENSE` for more information.

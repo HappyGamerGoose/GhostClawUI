@@ -61,25 +61,3 @@ If you want to build the project from source:
    ```bash
    git clone https://github.com/HappyGamerGoose/GhostClawUI.git
    cd GhostClawUI
-   ```
-2. Open `GhostClawUI.slnx` in Visual Studio.
-3. Set `GhostClawUI.App` as the startup project.
-4. Build and run using the `x64` platform configuration.
-
----
-
-## Architecture
-
-The application is split into two primary components:
-1. **GhostClawUI.App**: The WinUI 3 frontend application that provides the rich user interface.
-2. **GhostClawUI.Service**: A robust background daemon that manages the SQLite database, MCP server processes, Telegram polling, and securely orchestrates LLM API calls.
-
-They communicate via a high-performance Named Pipe IPC connection to ensure the UI thread remains completely unblocked.
-
-## Credits
-
-This project is a native UI built upon the original **[GhostClaw](https://github.com/b1rdmania/ghostclaw)** autonomous agent framework. All credit for the core agent architecture goes to the original creator!
-
-## License
-
-Apache License 2.0. See `LICENSE` for more information.

@@ -10,8 +10,11 @@ if (-not $signtool) {
     exit
 }
 
-$plainPass = Read-Host "Enter Certificate Password (leave empty for default)"
-if ([string]::IsNullOrWhiteSpace($plainPass)) { $plainPass = "ghostclaw" }
+$plainPass = Read-Host "Enter Certificate Password"
+if ([string]::IsNullOrWhiteSpace($plainPass)) { 
+    Write-Warning "Password is required to sign the package."
+    exit 
+}
 
 Write-Host "Signing MSIX package: $msixPath using SignTool"
 & $signtool sign /f $pfxPath /p $plainPass /fd SHA256 $msixPath

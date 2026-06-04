@@ -24,8 +24,8 @@ try {
 
     Write-Host "[2/3] Registering certificate for current user..."
     try {
-        $plainPass = Read-Host "Enter Certificate Password (leave empty for default)"
-        if ([string]::IsNullOrWhiteSpace($plainPass)) { $plainPass = "ghostclaw" }
+        $plainPass = Read-Host "Enter Certificate Password"
+        if ([string]::IsNullOrWhiteSpace($plainPass)) { throw "Password is required to import the certificate." }
         $password = ConvertTo-SecureString $plainPass -AsPlainText -Force
         $pfxPath = Join-Path $scriptDir "artifacts\cert\GhostClawUI.Dev.pfx"
         Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation "Cert:\CurrentUser\TrustedPeople" -Password $password

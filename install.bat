@@ -14,8 +14,12 @@ timeout /t 2 /nobreak > nul
 
 echo.
 echo [2/3] Importing certificate system-wide to Local Machine...
-set /p PFX_PASSWORD=Enter Certificate Password (or press Enter for default): 
-if "%PFX_PASSWORD%"=="" set PFX_PASSWORD=ghostclaw
+set /p PFX_PASSWORD=Enter Certificate Password: 
+if "%PFX_PASSWORD%"=="" (
+    echo Password is required to import the certificate.
+    pause > nul
+    exit /b 1
+)
 
 powershell -Command "$password = ConvertTo-SecureString '%PFX_PASSWORD%' -AsPlainText -Force; Import-PfxCertificate -FilePath 'artifacts\cert\GhostClawUI.Dev.pfx' -CertStoreLocation 'Cert:\LocalMachine\TrustedPeople' -Password $password"
 

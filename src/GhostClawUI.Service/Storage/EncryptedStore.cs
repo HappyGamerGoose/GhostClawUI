@@ -144,23 +144,26 @@ internal sealed class EncryptedStore
 
     public ConversationDetail GetOrCreateConversation(string? id = null)
     {
-        if (!string.IsNullOrWhiteSpace(id))
+        lock (_gate)
         {
-            var existing = GetConversation(id);
-            if (existing is not null)
+            if (!string.IsNullOrWhiteSpace(id))
             {
-                return existing;
+                var existing = GetConversation(id);
+                if (existing is not null)
+                {
+                    return existing;
+                }
             }
-        }
 
-        var created = DateTimeOffset.UtcNow;
-        var newId = Guid.NewGuid().ToString("N");
-        Execute(
-            "INSERT INTO conversations (id, title, pinned, created_at, updated_at, context_cleared_at) VALUES ($id, $title, 0, $created, $created, NULL)",
-            ("$id", newId),
-            ("$title", Protect("New conversation")),
-            ("$created", created.ToString("O")));
-        return GetConversation(newId)!;
+            var created = DateTimeOffset.UtcNow;
+            var newId = Guid.NewGuid().ToString("N");
+            Execute(
+                "INSERT INTO conversations (id, title, pinned, created_at, updated_at, context_cleared_at) VALUES ($id, $title, 0, $created, $created, NULL)",
+                ("$id", newId),
+                ("$title", Protect("New conversation")),
+                ("$created", created.ToString("O")));
+            return GetConversation(newId)!;
+        }
     }
 
     public ConversationDetail? GetConversation(string id)
@@ -258,8 +261,26 @@ internal sealed class EncryptedStore
 
     public void DeleteConversation(string id)
     {
-        Execute("DELETE FROM messages WHERE conversation_id = $id", ("$id", id));
-        Execute("DELETE FROM conversations WHERE id = $id", ("$id", id));
+        lock (_gate)
+        {
+            using var connection = Open();
+            using var transaction = connection.BeginTransaction();
+            using (var cmd = connection.CreateCommand())
+            {
+                cmd.Transaction = transaction;
+                cmd.CommandText = "DELETE FROM messages WHERE conversation_id = $id";
+                cmd.Parameters.AddWithValue("$id", id);
+                cmd.ExecuteNonQuery();
+            }
+            using (var cmd = connection.CreateCommand())
+            {
+                cmd.Transaction = transaction;
+                cmd.CommandText = "DELETE FROM conversations WHERE id = $id";
+                cmd.Parameters.AddWithValue("$id", id);
+                cmd.ExecuteNonQuery();
+            }
+            transaction.Commit();
+        }
     }
 
     public void UpdateMessageContent(string id, string content)
@@ -671,11 +692,11 @@ internal sealed class EncryptedStore
                     reader.GetString(5),
                     reader.GetString(6),
                     reader.IsDBNull(7) ? "isolated" : reader.GetString(7),
-                    reader.IsDBNull(8) ? null : reader.GetString(8),
-                    reader.IsDBNull(9) ? null : reader.GetString(9),
+                    reader.IsDBNull(8) ? null : DateTimeOffset.Parse(reader.GetString(8)),
+                    reader.IsDBNull(9) ? null : DateTimeOffset.Parse(reader.GetString(9)),
                     reader.IsDBNull(10) ? null : reader.GetString(10),
                     reader.GetString(11),
-                    reader.GetString(12)
+                    DateTimeOffset.Parse(reader.GetString(12))
                 ));
             }
             return list;
@@ -708,11 +729,11 @@ internal sealed class EncryptedStore
             command.Parameters.AddWithValue("$type", task.ScheduleType);
             command.Parameters.AddWithValue("$val", task.ScheduleValue);
             command.Parameters.AddWithValue("$mode", task.ContextMode);
-            command.Parameters.AddWithValue("$next", (object?)task.NextRun ?? DBNull.Value);
-            command.Parameters.AddWithValue("$last", (object?)task.LastRun ?? DBNull.Value);
+            command.Parameters.AddWithValue("$next", task.NextRun?.ToString("O") ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("$last", task.LastRun?.ToString("O") ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("$result", (object?)task.LastResult ?? DBNull.Value);
             command.Parameters.AddWithValue("$status", task.Status);
-            command.Parameters.AddWithValue("$created", task.CreatedAt);
+            command.Parameters.AddWithValue("$created", task.CreatedAt.ToString("O"));
             command.ExecuteNonQuery();
         }
     }

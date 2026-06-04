@@ -105,6 +105,11 @@ internal sealed class ProviderGateway
                 }
                 catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
                 {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+
                     lastError = ex is TaskCanceledException
                         ? $"The model request timed out while using the {variant.Name} payload. Test this model in Providers, or choose a faster chat-capable model."
                         : $"Provider connection failed while using {variant.Name} payload: {ex.Message}";
@@ -256,8 +261,7 @@ internal sealed class ProviderGateway
         var url = baseUrl ?? "";
         var nm = name ?? "";
         var identifier = id ?? "";
-        return string.IsNullOrWhiteSpace(url) ||
-               url.Contains("api.anthropic.com", StringComparison.OrdinalIgnoreCase) ||
+        return url.Contains("api.anthropic.com", StringComparison.OrdinalIgnoreCase) ||
                url.Contains("anthropic", StringComparison.OrdinalIgnoreCase) ||
                nm.Contains("anthropic", StringComparison.OrdinalIgnoreCase) ||
                nm.Contains("claude", StringComparison.OrdinalIgnoreCase) ||

@@ -1,6 +1,7 @@
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using GhostClawUI.Service.Infrastructure;
 using GhostClawUI.Service.Storage;
@@ -13,11 +14,19 @@ namespace GhostClawUI.App.Services;
 
 internal sealed class PipeClient
 {
+    private static readonly ILoggerFactory _loggerFactory;
+    private static readonly ILogger<PipeClient> _logger;
     private static CommandRouter? _router;
     private static readonly Task _initTask;
 
     static PipeClient()
     {
+        _loggerFactory = LoggerFactory.Create(builder => 
+        {
+            builder.AddDebug();
+        });
+        _logger = _loggerFactory.CreateLogger<PipeClient>();
+
         _initTask = Task.Run(() =>
         {
             var paths = new AppPaths();
@@ -27,8 +36,8 @@ internal sealed class PipeClient
             var mcpCatalog = new McpCatalog(store, httpClient, paths);
             var mcpToolRunner = new McpToolRunner(paths);
             
-            var agentRunnerLogger = NullLogger<GhostClawAgentRunner>.Instance;
-            var supervisorLogger = NullLogger<GhostClawSupervisor>.Instance;
+            var agentRunnerLogger = _loggerFactory.CreateLogger<GhostClawAgentRunner>();
+            var supervisorLogger = _loggerFactory.CreateLogger<GhostClawSupervisor>();
             
             var agentRunner = new GhostClawAgentRunner(paths, mcpCatalog, agentRunnerLogger);
             var supervisor = new GhostClawSupervisor(paths, mcpCatalog, supervisorLogger);
@@ -39,7 +48,7 @@ internal sealed class PipeClient
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Failed to provision runtime: " + ex.Message);
+                _logger.LogError(ex, "Failed to provision runtime");
             }
 
             _router = new CommandRouter(
@@ -57,12 +66,12 @@ internal sealed class PipeClient
                     store,
                     _router,
                     httpClient,
-                    NullLogger<TelegramService>.Instance);
+                    _loggerFactory.CreateLogger<TelegramService>());
                 _ = telegramService.StartAsync(CancellationToken.None);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Failed to start Telegram service: " + ex.Message);
+                _logger.LogError(ex, "Failed to start Telegram service");
             }
         });
     }
@@ -74,7 +83,7 @@ internal sealed class PipeClient
         var payloadNode = payload is null ? null : JsonSerializer.SerializeToNode(payload, PipeJson.Options);
         var payloadSize = payloadNode?.ToJsonString(PipeJson.Options).Length ?? 0;
         
-        System.Diagnostics.Debug.WriteLine($"[IPC] RequestAsync started for command: {command}. Payload length: {payloadSize}");
+        _logger.LogInformation("[IPC] RequestAsync started for command: {Command}. Payload length: {PayloadSize}", command, payloadSize);
 
         var requestEnvelope = new PipeEnvelope(
             "request",
@@ -88,7 +97,7 @@ internal sealed class PipeClient
         sw.Stop();
 
         var responseSize = responseEnvelope.Payload?.ToJsonString(PipeJson.Options).Length ?? 0;
-        System.Diagnostics.Debug.WriteLine($"[IPC] RequestAsync completed for command: {command} in {sw.ElapsedMilliseconds}ms. Response length: {responseSize}");
+        _logger.LogInformation("[IPC] RequestAsync completed for command: {Command} in {Elapsed}ms. Response length: {ResponseSize}", command, sw.ElapsedMilliseconds, responseSize);
 
         if (responseEnvelope.Type == "error")
         {

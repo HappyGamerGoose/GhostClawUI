@@ -237,11 +237,11 @@ public sealed record ScheduledTask(
     string ScheduleType,
     string ScheduleValue,
     string ContextMode,
-    string? NextRun,
-    string? LastRun,
+    DateTimeOffset? NextRun,
+    DateTimeOffset? LastRun,
     string? LastResult,
     string Status,
-    string CreatedAt
+    DateTimeOffset CreatedAt
 );
 
 public sealed record TaskRunLog(

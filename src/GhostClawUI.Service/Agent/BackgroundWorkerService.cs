@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using Cronos;
 using GhostClawUI.Service.Infrastructure;
 using GhostClawUI.Service.Storage;
 using GhostClawUI.Service.Providers;
@@ -12,6 +13,7 @@ namespace GhostClawUI.Service.Agent;
 
 internal sealed class BackgroundWorkerService : BackgroundService
 {
+    private readonly HashSet<string> _runningTasks = new();
     private readonly EncryptedStore _store;
     private readonly ProviderGateway _providerGateway;
     private readonly GhostClawAgentRunner _agentRunner;
@@ -45,15 +47,23 @@ internal sealed class BackgroundWorkerService : BackgroundService
                 {
                     if (task.Status != "active") continue;
 
-                    if (!string.IsNullOrWhiteSpace(task.NextRun) && DateTimeOffset.TryParse(task.NextRun, out var nextRun))
+                    if (task.NextRun.HasValue)
                     {
-                        if (now >= nextRun)
+                        if (now >= task.NextRun.Value)
                         {
+                            lock (_runningTasks)
+                            {
+                                if (!_runningTasks.Add(task.Id)) continue;
+                            }
                             _ = Task.Run(() => ExecuteTaskAsync(task, stoppingToken), stoppingToken);
                         }
                     }
-                    else if (task.ScheduleType == "startup" && string.IsNullOrWhiteSpace(task.LastRun))
+                    else if (task.ScheduleType == "startup" && !task.LastRun.HasValue)
                     {
+                        lock (_runningTasks)
+                        {
+                            if (!_runningTasks.Add(task.Id)) continue;
+                        }
                         _ = Task.Run(() => ExecuteTaskAsync(task, stoppingToken), stoppingToken);
                     }
                 }
@@ -83,11 +93,11 @@ internal sealed class BackgroundWorkerService : BackgroundService
                     "cron",
                     "0 * * * *", // Every hour
                     "isolated",
-                    DateTimeOffset.UtcNow.AddMinutes(60).ToString("O"),
+                    DateTimeOffset.UtcNow.AddMinutes(60),
                     null,
                     null,
                     "active",
-                    DateTimeOffset.UtcNow.ToString("O")
+                    DateTimeOffset.UtcNow
                 ));
             }
         }
@@ -102,8 +112,8 @@ internal sealed class BackgroundWorkerService : BackgroundService
         _logger.LogInformation("Executing background task: {TaskId}", task.Id);
 
         // Update last run and schedule next run (simplified parsing)
-        var nextRunStr = CalculateNextRun(task);
-        var updatedTask = task with { LastRun = DateTimeOffset.UtcNow.ToString("O"), NextRun = nextRunStr };
+        var nextRunVal = CalculateNextRun(task);
+        var updatedTask = task with { LastRun = DateTimeOffset.UtcNow, NextRun = nextRunVal };
         _store.UpsertScheduledTask(updatedTask);
 
         try
@@ -151,14 +161,29 @@ internal sealed class BackgroundWorkerService : BackgroundService
             var errTask = updatedTask with { LastResult = "error" };
             _store.UpsertScheduledTask(errTask);
         }
+        finally
+        {
+            lock (_runningTasks)
+            {
+                _runningTasks.Remove(task.Id);
+            }
+        }
     }
 
-    private string? CalculateNextRun(ScheduledTask task)
+    private DateTimeOffset? CalculateNextRun(ScheduledTask task)
     {
         if (task.ScheduleType == "cron")
         {
-            // Simple hour bump for now
-            return DateTimeOffset.UtcNow.AddHours(1).ToString("O"); 
+            try
+            {
+                var expression = CronExpression.Parse(task.ScheduleValue);
+                var next = expression.GetNextOccurrence(DateTime.UtcNow);
+                return next.HasValue ? new DateTimeOffset(next.Value, TimeSpan.Zero) : null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse cron expression for task {TaskId}: {Expression}", task.Id, task.ScheduleValue);
+            }
         }
         return null;
     }

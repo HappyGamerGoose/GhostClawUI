@@ -1,5 +1,6 @@
 # GhostClawUI
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/HappyGamerGoose/GhostClawUI)
+
 GhostClawUI is a powerful, deeply-integrated native Windows Desktop client for interacting with AI Agents. Built from the ground up using **WinUI 3** and **.NET 10**, it offers a lightning-fast, highly optimized interface that connects directly to your local file system, tools, and background processes.
 
 Unlike standard web-based AI clients, GhostClawUI brings autonomous agent capabilities directly to your desktop.

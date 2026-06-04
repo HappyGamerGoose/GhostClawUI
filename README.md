@@ -62,7 +62,7 @@ If you want to build the project from source:
    git clone https://github.com/HappyGamerGoose/GhostClawUI.git
    cd GhostClawUI
    ```
-2. Open `GhostClawUI.sln` in Visual Studio.
+2. Open `GhostClawUI.slnx` in Visual Studio.
 3. Set `GhostClawUI.App` as the startup project.
 4. Build and run using the `x64` platform configuration.
 

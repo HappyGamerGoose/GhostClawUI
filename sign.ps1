@@ -1,7 +1,17 @@
-$pfxPath = "C:\Users\akshi\Documents\GhostClawUI\artifacts\cert\GhostClawUI.Dev.pfx"
-$msixPath = "C:\Users\akshi\Documents\GhostClawUI\src\GhostClawUI.App\AppPackages\GhostClawUI.App_1.9.65.0_x64_Debug_Test\GhostClawUI.App_1.9.65.0_x64_Debug.msix"
-$signtool = "C:\Users\akshi\.nuget\packages\microsoft.windows.sdk.buildtools\10.0.26100.7705\bin\10.0.26100.0\x64\signtool.exe"
+$scriptDir = $PSScriptRoot
+if (-not $scriptDir) { $scriptDir = "." }
+
+$pfxPath = Join-Path $scriptDir "artifacts\cert\GhostClawUI.Dev.pfx"
+$msixPath = Join-Path $scriptDir "src\GhostClawUI.App\AppPackages\GhostClawUI.App_2.0.0.0_x64_Test\GhostClawUI.App_2.0.0.0_x64.msix"
+$signtool = Get-ChildItem -Path "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools" -Filter "signtool.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 | Select-Object -ExpandProperty FullName
+
+if (-not $signtool) {
+    Write-Warning "signtool.exe not found in NuGet cache."
+    exit
+}
+
+$plainPass = Read-Host "Enter Certificate Password (leave empty for default)"
+if ([string]::IsNullOrWhiteSpace($plainPass)) { $plainPass = "ghostclaw" }
 
 Write-Host "Signing MSIX package: $msixPath using SignTool"
-& $signtool sign /f $pfxPath /p ghostclaw /fd SHA256 $msixPath
-
+& $signtool sign /f $pfxPath /p $plainPass /fd SHA256 $msixPath

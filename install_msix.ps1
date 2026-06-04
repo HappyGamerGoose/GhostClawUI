@@ -1,9 +1,11 @@
-$logPath = "C:\Users\akshi\Documents\GhostClawUI\install_log.txt"
+$scriptDir = $PSScriptRoot
+if (-not $scriptDir) { $scriptDir = "." }
+$logPath = Join-Path $scriptDir "install_log.txt"
 Start-Transcript -Path $logPath -Append
 
 try {
     Write-Host "============================================================"
-    Write-Host "  GhostClawUI Version 1.9.51.0 Upgrade & Sideload Utility"
+    Write-Host "  GhostClawUI Version 2.0.0.0 Upgrade & Sideload Utility"
     Write-Host "============================================================"
     Write-Host ""
 
@@ -18,12 +20,15 @@ try {
     Stop-Process -Name "GhostClawUI.Service", "GhostClawUI.App", "node", "python" -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
 
-    $msixPath = "C:\Users\akshi\Documents\GhostClawUI\src\GhostClawUI.App\AppPackages\GhostClawUI.App_2.0.0.0_x64_Test\GhostClawUI.App_2.0.0.0_x64.msix"
+    $msixPath = Join-Path $scriptDir "src\GhostClawUI.App\AppPackages\GhostClawUI.App_2.0.0.0_x64_Test\GhostClawUI.App_2.0.0.0_x64.msix"
 
     Write-Host "[2/3] Registering certificate for current user..."
     try {
-        $password = ConvertTo-SecureString "ghostclaw" -AsPlainText -Force
-        Import-PfxCertificate -FilePath "C:\Users\akshi\Documents\GhostClawUI\artifacts\cert\GhostClawUI.Dev.pfx" -CertStoreLocation "Cert:\CurrentUser\TrustedPeople" -Password $password
+        $plainPass = Read-Host "Enter Certificate Password (leave empty for default)"
+        if ([string]::IsNullOrWhiteSpace($plainPass)) { $plainPass = "ghostclaw" }
+        $password = ConvertTo-SecureString $plainPass -AsPlainText -Force
+        $pfxPath = Join-Path $scriptDir "artifacts\cert\GhostClawUI.Dev.pfx"
+        Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation "Cert:\CurrentUser\TrustedPeople" -Password $password
     } catch {
         Write-Host "Warning: Certificate registration skipped or failed, continuing deployment: $_"
     }

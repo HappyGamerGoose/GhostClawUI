@@ -138,7 +138,7 @@ public static class ResponseTextSanitizer
 
     private static string StripBold(string text)
     {
-        return text;
+        return System.Text.RegularExpressions.Regex.Replace(text, @"\*\*(.*?)\*\*", "$1");
     }
 
     private static bool LooksLikeToolBlock(IReadOnlyList<string> lines) =>

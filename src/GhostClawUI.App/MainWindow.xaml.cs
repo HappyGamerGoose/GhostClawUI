@@ -155,6 +155,7 @@ internal sealed partial class MainWindow : Window
         // Go directly to a fresh Chat on startup instead of the onboarding screen immediately
         ShowPage("Chat");
 
+        await EnsureServiceRunningAsync();
         await LoadSettingsAsync();
         await RefreshStatusAsync();
         await RefreshConversationsAsync();
@@ -214,8 +215,7 @@ internal sealed partial class MainWindow : Window
         name.Foreground = UiKit.SidebarTextBrush;
         brandCopy.Children.Add(name);
         _statusText.Foreground = UiKit.SidebarMutedBrush;
-        _statusText.Visibility = Visibility.Collapsed;
-        // brandCopy.Children.Add(_statusText);
+        brandCopy.Children.Add(_statusText);
         brand.Children.Add(brandCopy);
         brandRow.Children.Add(brand);
         var collapse = new Button
@@ -428,9 +428,16 @@ internal sealed partial class MainWindow : Window
             }
             icon.Foreground = UiKit.SidebarTextBrush;
         };
-        border.PointerPressed += (s, _) =>
+        border.IsTabStop = true;
+        border.UseSystemFocusVisuals = true;
+        border.Tapped += (s, _) => action();
+        border.KeyDown += (s, e) =>
         {
-            action();
+            if (e.Key == Windows.System.VirtualKey.Enter || e.Key == Windows.System.VirtualKey.Space)
+            {
+                action();
+                e.Handled = true;
+            }
         };
         AutomationProperties.SetName(border, name);
         return border;
@@ -554,9 +561,16 @@ internal sealed partial class MainWindow : Window
             }
         };
 
-        border.PointerPressed += (s, e) =>
+        border.IsTabStop = true;
+        border.UseSystemFocusVisuals = true;
+        border.Tapped += (s, e) => ShowPage(label);
+        border.KeyDown += (s, e) =>
         {
-            ShowPage(label);
+            if (e.Key == Windows.System.VirtualKey.Enter || e.Key == Windows.System.VirtualKey.Space)
+            {
+                ShowPage(label);
+                e.Handled = true;
+            }
         };
 
         AutomationProperties.SetName(border, label);
@@ -975,7 +989,6 @@ internal sealed partial class MainWindow : Window
 
     private void ShowNotice(string title, string message, InfoBarSeverity severity = InfoBarSeverity.Informational)
     {
-        _noticeHost.Children.Clear();
         _noticeHost.Children.Add(UiKit.Info(title, message, severity));
     }
 

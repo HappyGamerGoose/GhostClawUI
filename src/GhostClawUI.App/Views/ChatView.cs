@@ -3208,7 +3208,7 @@ internal sealed class ChatView : UserControl
             // Pass full resolution attachments as requested by the user
             var processedAttachments = attachments.ToList();
 
-            var request = new ChatSendRequest(conversationId, provider.Id, model, apiKey, contentToSend, _whisperMode, _settings().Verbosity, processedAttachments, AgentMode: _agentMode);
+            var request = new ChatSendRequest(conversationId, provider.Id, model, contentToSend, _whisperMode, _settings().Verbosity, processedAttachments, AgentMode: _agentMode);
             StartPollingActiveTraces();
             var result = await _pipe.RequestAsync<ChatSendResult>("chat.send", request, _chatCts.Token);
             StopPollingActiveTraces();

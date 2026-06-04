@@ -108,7 +108,6 @@ public sealed record ChatSendRequest(
     string ConversationId,
     string ProviderId,
     string Model,
-    string? ApiKey,
     string Content,
     bool WhisperMode,
     string Verbosity,

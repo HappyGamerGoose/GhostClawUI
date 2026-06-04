@@ -12,7 +12,9 @@ public partial class App : Application
         UnhandledException += (_, e) =>
         {
             System.Diagnostics.Debug.WriteLine($"Unhandled exception: {e.Exception}");
-            System.IO.File.WriteAllText("crash.log", e.Exception.ToString());
+            var path = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "GhostClawUI", "crash.log");
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
+            System.IO.File.WriteAllText(path, e.Exception.ToString());
             e.Handled = true;
         };
     }

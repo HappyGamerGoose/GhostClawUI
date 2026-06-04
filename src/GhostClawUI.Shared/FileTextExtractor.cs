@@ -46,7 +46,7 @@ public static class FileTextExtractor
         // PDF, Word, PowerPoint, Excel — extract text natively (CPU-intensive, run on background thread)
         if (new[] { ".pdf", ".docx", ".doc", ".pptx", ".ppt", ".xlsx", ".xls" }.Contains(ext))
         {
-            return await Task.Run(() => ExtractTextNativeAsync(filePath, maxCharacters)).ConfigureAwait(false);
+            return await ExtractTextNativeAsync(filePath, maxCharacters).ConfigureAwait(false);
         }
 
         // Images: skip expensive OCR

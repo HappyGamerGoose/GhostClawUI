@@ -398,7 +398,6 @@ internal sealed class TelegramService : BackgroundService
                     ConversationId: conversationId,
                     ProviderId: provider.Id,
                     Model: model,
-                    ApiKey: null, // Resolves from vault
                     Content: text,
                     WhisperMode: false,
                     Verbosity: "Normal",

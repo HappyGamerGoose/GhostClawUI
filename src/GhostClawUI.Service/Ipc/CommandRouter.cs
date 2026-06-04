@@ -329,7 +329,7 @@ internal sealed class CommandRouter
             return new ChatSendResult(error, trace, facts, false, error.Content);
         }
 
-        var apiKey = chatRequest.ApiKey ?? string.Empty;
+        var apiKey = GhostClawUI.Service.Infrastructure.PasswordVaultHelper.ReadProviderKey(provider.Id) ?? string.Empty;
 
         // Save user message memory background extraction
         StoreRememberedFacts(userContent, provider, chatRequest.Model, apiKey);

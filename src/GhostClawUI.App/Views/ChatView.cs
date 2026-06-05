@@ -25,8 +25,13 @@ using WinRT.Interop;
 
 namespace GhostClawUI.App.Views;
 
-internal sealed class ChatView : UserControl
+internal sealed class ChatView : UserControl, IDisposable
 {
+    public void Dispose()
+    {
+        _chatCts?.Dispose();
+    }
+
     private readonly PipeClient _pipe;
     private readonly CredentialVault _vault;
     private readonly Func<AppSettings> _settings;
@@ -111,7 +116,7 @@ internal sealed class ChatView : UserControl
     private Grid? _liveRunRow;
     private DispatcherQueueTimer? _pollingTimer;
     private Windows.Foundation.TypedEventHandler<DispatcherQueueTimer, object>? _pollingTimerHandler;
-    private IReadOnlyList<AgentTraceCard>? _lastTraces;
+    private List<AgentTraceCard>? _lastTraces;
     private bool _isPollingActive;
 
 
@@ -160,7 +165,7 @@ internal sealed class ChatView : UserControl
         await SendAsync();
     }
 
-    private UIElement Build()
+    private Grid Build()
     {
         // Chat Panel Area
         var chatPanel = new Grid
@@ -697,7 +702,7 @@ internal sealed class ChatView : UserControl
         headerText.Foreground = PrimaryTextBrush();
         headerText.HorizontalAlignment = HorizontalAlignment.Center;
         
-        var subText = UiKit.Muted(string.IsNullOrWhiteSpace(title) || title.Contains("ready") || title.Contains("GhostClaw") ? "GhostClaw Desktop Intelligence" : title, 14);
+        var subText = UiKit.Muted(string.IsNullOrWhiteSpace(title) || title.Contains("ready", StringComparison.OrdinalIgnoreCase) || title.Contains("GhostClaw", StringComparison.OrdinalIgnoreCase) ? "GhostClaw Desktop Intelligence" : title, 14);
         subText.HorizontalAlignment = HorizontalAlignment.Center;
         subText.TextAlignment = TextAlignment.Center;
 
@@ -1165,7 +1170,7 @@ internal sealed class ChatView : UserControl
         });
     }
 
-    private string? ResolveLocalFilePath(string p)
+    private static string? ResolveLocalFilePath(string p)
     {
         // 1. Try absolute path directly
         if (System.IO.File.Exists(p)) return System.IO.Path.GetFullPath(p);
@@ -2095,7 +2100,7 @@ internal sealed class ChatView : UserControl
 
     private Brush SecondaryTextBrush() => IsDarkMode ? UiKit.BrushFromHex("#CBD5E1") : ResourceBrush("TextFillColorSecondaryBrush", "#6B7280");
 
-    private SolidColorBrush ChatBackgroundBrush() => new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+    private static SolidColorBrush ChatBackgroundBrush() => new SolidColorBrush(Microsoft.UI.Colors.Transparent);
 
     private Brush SurfaceBrush() => IsDarkMode ? UiKit.BrushFromHex("#B8252B36") : ResourceBrush("LayerFillColorDefaultBrush", "#B8FFFFFF");
 
@@ -2215,7 +2220,7 @@ internal sealed class ChatView : UserControl
         return border;
     }
 
-    private SolidColorBrush GetNativeBrandBackground(string brand)
+    private static SolidColorBrush GetNativeBrandBackground(string brand)
     {
         switch (brand)
         {
@@ -2252,7 +2257,7 @@ internal sealed class ChatView : UserControl
         }
     }
 
-    private UIElement GetNativeBrandLogoElement(string brand, double fontSize = 12)
+    private static UIElement GetNativeBrandLogoElement(string brand, double fontSize = 12)
     {
         string? pathData = null;
 
@@ -2424,7 +2429,7 @@ internal sealed class ChatView : UserControl
         }
     }
 
-    private void SetFallbackBrandIcon(Border logoContainer, string glyph, string color, string bg)
+    private static void SetFallbackBrandIcon(Border logoContainer, string glyph, string color, string bg)
     {
         logoContainer.BorderBrush = UiKit.BrushFromHex(color);
         logoContainer.Background = UiKit.BrushFromHex(bg);
@@ -2438,7 +2443,7 @@ internal sealed class ChatView : UserControl
         };
     }
 
-    private async Task LoadAvatarLogoAsync(string url, Image logoImage, Border logoContainer, string modelName)
+    private static async Task LoadAvatarLogoAsync(string url, Image logoImage, Border logoContainer, string modelName)
     {
         try
         {
@@ -4219,7 +4224,7 @@ internal sealed class ChatView : UserControl
         };
     }
 
-    private Border RenderAgentExecutionCard(AgentTraceCard trace)
+    private static Border RenderAgentExecutionCard(AgentTraceCard trace)
     {
         var stack = new StackPanel { Spacing = 6 };
         
@@ -4412,7 +4417,7 @@ internal sealed class ChatView : UserControl
     }
 }
 
-internal sealed class HandCursorBorder : ContentControl
+public sealed class HandCursorBorder : ContentControl
 {
     public HandCursorBorder()
     {

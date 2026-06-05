@@ -530,12 +530,12 @@ internal sealed class CommandRouter
         return new ChatSendResult(assistant, trace, facts, false, null);
     }
 
-    private static JsonObject? BuildAttachmentMetadata(IReadOnlyList<ChatAttachment> attachments) =>
+    private static JsonObject? BuildAttachmentMetadata(List<ChatAttachment> attachments) =>
         attachments.Count == 0
             ? null
             : new JsonObject { ["attachments"] = JsonSerializer.SerializeToNode(attachments, PipeJson.Options) };
 
-    private static string BuildPromptWithAttachments(string content, IReadOnlyList<ChatAttachment> attachments)
+    private static string BuildPromptWithAttachments(string content, List<ChatAttachment> attachments)
     {
         if (attachments.Count == 0)
         {
@@ -1367,7 +1367,7 @@ Message to analyze:
                     {
                         var line = lines[i];
                         var trimmed = line.TrimStart();
-                        if (!trimmed.StartsWith("#") && (line.Contains("──") || line.Contains("───") || line.Contains("══") || line.Contains("━━")))
+                        if (!trimmed.StartsWith("#") && (line.Contains("──", StringComparison.Ordinal) || line.Contains("───", StringComparison.Ordinal) || line.Contains("══", StringComparison.Ordinal) || line.Contains("━━", StringComparison.Ordinal)))
                         {
                             lines[i] = "# " + line;
                         }

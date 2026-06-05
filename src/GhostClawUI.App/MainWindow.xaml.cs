@@ -14,7 +14,7 @@ using WinRT.Interop;
 
 namespace GhostClawUI.App;
 
-internal sealed partial class MainWindow : Window
+internal sealed partial class MainWindow : Window, IDisposable
 {
     private readonly PipeClient _pipe = new();
     private readonly CredentialVault _vault = new();
@@ -63,6 +63,12 @@ internal sealed partial class MainWindow : Window
         _ = InitializeAsync();
     }
 
+    public void Dispose()
+    {
+        _tray?.Dispose();
+        _statusTimer?.Stop();
+    }
+
     public nint Hwnd => WindowNative.GetWindowHandle(this);
 
     private void TrySetWindowIcon()
@@ -95,7 +101,7 @@ internal sealed partial class MainWindow : Window
         }
     }
 
-    private async Task EnsureServiceRunningAsync()
+    private static async Task EnsureServiceRunningAsync()
     {
         await Task.Run(() =>
         {
@@ -345,7 +351,7 @@ internal sealed partial class MainWindow : Window
         RootHost.Children.Add(root);
     }
 
-    private FrameworkElement BuildCollapsedSidebar()
+    private Grid BuildCollapsedSidebar()
     {
         var grid = new Grid
         {
@@ -682,7 +688,7 @@ internal sealed partial class MainWindow : Window
         ApplyShellPalette();
     }
 
-    private void OverrideSystemAccentColor(Windows.UI.Color color)
+    private static void OverrideSystemAccentColor(Windows.UI.Color color)
     {
         var resources = Application.Current.Resources;
         resources["SystemAccentColor"] = color;

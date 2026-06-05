@@ -40,7 +40,7 @@ internal sealed class McpStoreView : UserControl
         _ = FetchServersAsync();
     }
 
-    private UIElement Build()
+    private Grid Build()
     {
         var root = UiKit.Page();
         root.MaxWidth = 1200;
@@ -167,7 +167,7 @@ internal sealed class McpStoreView : UserControl
         RenderList(filtered);
     }
 
-    private void RenderList(IReadOnlyList<McpServerDefinition> servers)
+    private void RenderList(List<McpServerDefinition> servers)
     {
         _list.Children.Clear();
 
@@ -878,7 +878,7 @@ internal sealed class McpStoreView : UserControl
         return panel;
     }
 
-    private static IReadOnlyList<string> SplitCommand(string commandLine)
+    private static List<string> SplitCommand(string commandLine)
     {
         var list = new List<string>();
         if (string.IsNullOrWhiteSpace(commandLine)) return list;
@@ -905,7 +905,7 @@ internal sealed class McpStoreView : UserControl
             : $"{server.Command} {string.Join(' ', server.Args)}";
     }
 
-    private static Brush ResourceBrush(string key, string fallback)
+    private static SolidColorBrush ResourceBrush(string key, string fallback)
     {
         return UiKit.BrushFromHex(fallback);
     }

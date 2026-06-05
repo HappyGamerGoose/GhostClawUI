@@ -567,6 +567,31 @@ internal sealed class EncryptedStore
     public void SaveTelegramSettings(TelegramSettings settings) =>
         SetSetting("telegram-settings", JsonSerializer.Serialize(settings, PipeJson.Options));
 
+    public WhatsAppSettings GetWhatsAppSettings()
+    {
+        var json = GetSetting("whatsapp-settings");
+        if (!string.IsNullOrWhiteSpace(json))
+        {
+            try
+            {
+                var parsed = JsonSerializer.Deserialize<WhatsAppSettings>(json, PipeJson.Options);
+                if (parsed is not null)
+                {
+                    return parsed;
+                }
+            }
+            catch (Exception ex) 
+            { 
+                System.Diagnostics.Debug.WriteLine($"Failed to parse whatsapp settings: {ex}"); 
+            }
+        }
+
+        return new WhatsAppSettings("", "", "", "5000", false);
+    }
+
+    public void SaveWhatsAppSettings(WhatsAppSettings settings) =>
+        SetSetting("whatsapp-settings", JsonSerializer.Serialize(settings, PipeJson.Options));
+
     public bool ProbeWritable()
     {
         var key = "health-probe";

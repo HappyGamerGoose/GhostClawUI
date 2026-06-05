@@ -179,6 +179,11 @@ internal sealed class ProviderGateway
         builder.AppendLine("2. For ReportLab PDF generation: ALWAYS import standard alignment constants with underscores (e.g. TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT) from 'reportlab.lib.enums'. NEVER write TACENTER, TAJUSTIFY, TALEFT, or TARIGHT without underscores.");
         builder.AppendLine("3. For python-pptx presentations: NEVER use non-existent methods like '.fit_text()' or '.autofit()' on text frames or shapes. Use standard font sizing and word wrap features.");
         builder.AppendLine("===================================");
+        
+        builder.AppendLine("=== DEEP INSPECTION & BRAINSTORMING ===");
+        builder.AppendLine("When faced with a complex task or error, you MUST wrap your thought process in a <think>...</think> block. Inside this block, perform Deep Inspection (break down the problem, examine the root cause of errors, analyze data context) and Brainstorming (list out at least 2-3 distinct approaches, weigh their pros and cons, and choose the most robust one) before you output your final answer or tool payload.");
+        builder.AppendLine("This guarantees high-quality, agentic reasoning.");
+        builder.AppendLine("=======================================");
 
         builder.AppendLine($"User-selected verbosity: {verbosity}.");
         if (facts.Count > 0)

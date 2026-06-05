@@ -101,6 +101,9 @@ internal sealed class CommandRouter
             "telegram.get" => PipeEnvelope.Response(request, _store.GetTelegramSettings()),
             "telegram.save" => PipeEnvelope.Response(request, SaveTelegramSettingsHelper(Require<TelegramSettings>(request))),
             "telegram.status" => PipeEnvelope.Response(request, GetTelegramStatus()),
+            "whatsapp.get" => PipeEnvelope.Response(request, _store.GetWhatsAppSettings()),
+            "whatsapp.save" => PipeEnvelope.Response(request, SaveWhatsAppSettingsHelper(Require<WhatsAppSettings>(request))),
+            "whatsapp.status" => PipeEnvelope.Response(request, GetWhatsAppStatus()),
             "updates.check" => PipeEnvelope.Response(request, new CommandResult(true, "No update is currently staged.")),
             "updates.rollback" => PipeEnvelope.Response(request, new CommandResult(true, "No rollback package is currently staged.")),
             "undo.last" => PipeEnvelope.Response(request, _supervisor.UndoLastFileModification()),
@@ -912,6 +915,18 @@ Message to analyze:
     {
         var settings = _store.GetTelegramSettings();
         return new CommandResult(settings.IsEnabled, settings.IsEnabled ? "Telegram listener is active." : "Telegram listener is disabled.");
+    }
+
+    private CommandResult SaveWhatsAppSettingsHelper(WhatsAppSettings settings)
+    {
+        _store.SaveWhatsAppSettings(settings);
+        return new CommandResult(true, "WhatsApp settings saved successfully.");
+    }
+
+    private CommandResult GetWhatsAppStatus()
+    {
+        var settings = _store.GetWhatsAppSettings();
+        return new CommandResult(settings.IsEnabled, settings.IsEnabled ? $"WhatsApp webhook is active on port {settings.WebhookPort}." : "WhatsApp webhook is disabled.");
     }
 
     private List<RalphStatusResponse> ListRalphRuns()

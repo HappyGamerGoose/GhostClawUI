@@ -302,3 +302,10 @@ public sealed record TelegramSettings(
     string ChatId,
     bool IsEnabled);
 
+public sealed record WhatsAppSettings(
+    string AccessToken,
+    string PhoneNumberId,
+    string VerifyToken,
+    string WebhookPort,
+    bool IsEnabled);
+

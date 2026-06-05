@@ -32,6 +32,7 @@ var builder = Host.CreateDefaultBuilder(args)
         services.AddHostedService<GhostClawHostedService>();
         services.AddHostedService<PipeHostedService>();
         services.AddHostedService<TelegramService>();
+        services.AddHostedService<WhatsAppService>();
         services.AddHostedService<BackgroundWorkerService>();
     });
 

@@ -14,20 +14,15 @@ timeout /t 2 /nobreak > nul
 
 echo.
 echo [2/3] Importing certificate system-wide to Local Machine...
-set /p PFX_PASSWORD=Enter Certificate Password: 
-if "%PFX_PASSWORD%"=="" (
-    echo Password is required to import the certificate.
-    pause > nul
-    exit /b 1
-)
+set PFX_PASSWORD=123456
 
-powershell -Command "$password = ConvertTo-SecureString '%PFX_PASSWORD%' -AsPlainText -Force; Import-PfxCertificate -FilePath 'artifacts\cert\GhostClawUI.Dev.pfx' -CertStoreLocation 'Cert:\LocalMachine\TrustedPeople' -Password $password"
+powershell -Command "$password = ConvertTo-SecureString '%PFX_PASSWORD%' -AsPlainText -Force; Import-PfxCertificate -FilePath 'artifacts\cert\GhostClawUI.Dev2.pfx' -CertStoreLocation 'Cert:\LocalMachine\TrustedPeople' -Password $password"
 
 echo.
 echo [2.5/3] Signing MSIX Package (if needed)...
 for /f "delims=" %%i in ('powershell -Command "(Get-ChildItem -Path \"$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools\" -Filter \"signtool.exe\" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName"') do set SIGNTOOL_PATH=%%i
 if defined SIGNTOOL_PATH (
-    "%SIGNTOOL_PATH%" sign /f "artifacts\cert\GhostClawUI.Dev.pfx" /p %PFX_PASSWORD% /fd SHA256 "src\GhostClawUI.App\AppPackages\GhostClawUI.App_2.0.0.0_x64_Test\GhostClawUI.App_2.0.0.0_x64.msix"
+    "%SIGNTOOL_PATH%" sign /f "artifacts\cert\GhostClawUI.Dev2.pfx" /p %PFX_PASSWORD% /fd SHA256 "src\GhostClawUI.App\AppPackages\GhostClawUI.App_2.0.0.0_x64_Test\GhostClawUI.App_2.0.0.0_x64.msix"
 ) else (
     echo signtool.exe not found in NuGet packages. Skipping signing...
 )

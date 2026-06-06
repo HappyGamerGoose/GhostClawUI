@@ -38,7 +38,6 @@ internal sealed partial class ChatView
             AllowDrop = true,
             RowDefinitions =
             {
-                new RowDefinition { Height = GridLength.Auto }, // Date
                 new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }, // Messages
                 new RowDefinition { Height = GridLength.Auto }  // Composer
             }
@@ -46,31 +45,15 @@ internal sealed partial class ChatView
         chatPanel.DragOver += OnDragOver;
         chatPanel.Drop += OnDrop;
 
-        var dateText = UiKit.Muted("Today", 12);
-        dateText.Foreground = SecondaryTextBrush();
-        var date = new Border
-        {
-            Child = dateText,
-            Padding = new Thickness(12, 6, 12, 6),
-            CornerRadius = new CornerRadius(6),
-            BorderThickness = new Thickness(1),
-            BorderBrush = StrokeBrush(),
-            Background = SurfaceBrush(),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 14, 0, 6)
-        };
-        Grid.SetRow(date, 0);
-        chatPanel.Children.Add(date);
-
         _scroll.Content = _messages;
         _scroll.MaxWidth = 1300;
         _scroll.HorizontalAlignment = HorizontalAlignment.Stretch;
         _scroll.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        Grid.SetRow(_scroll, 1);
+        Grid.SetRow(_scroll, 0);
         chatPanel.Children.Add(_scroll);
 
         var composer = BuildComposer();
-        Grid.SetRow(composer, 2);
+        Grid.SetRow(composer, 1);
         chatPanel.Children.Add(composer);
 
         return chatPanel;

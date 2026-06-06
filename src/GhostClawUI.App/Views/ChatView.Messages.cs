@@ -85,11 +85,6 @@ internal sealed partial class ChatView
     {
         Border? bubbleBorder = null;
         var panel = new StackPanel { Spacing = 8 };
-        if (!isUser)
-        {
-            panel.Children.Add(UiKit.Muted(message.CreatedAt.ToLocalTime().ToString("t"), 12));
-        }
-
         var visibleContent = isUser ? message.Content : ResponseTextSanitizer.CleanForDisplay(message.Content);
         if (!isUser && HasGeneratedFiles(message.Metadata))
         {
@@ -137,14 +132,6 @@ internal sealed partial class ChatView
         foreach (var attachment in ReadAttachments(message.Metadata))
         {
             panel.Children.Add(AttachmentPreview(attachment, isUser, removable: false));
-        }
-
-        if (isUser)
-        {
-            var time = UiKit.Text(message.CreatedAt.ToLocalTime().ToString("t") + "  \u2713", 11);
-            time.Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(210, 255, 255, 255));
-            time.HorizontalAlignment = HorizontalAlignment.Right;
-            panel.Children.Add(time);
         }
 
         var actionPanel = new StackPanel

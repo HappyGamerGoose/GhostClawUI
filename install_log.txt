@@ -1,0 +1,66 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260606123103
+Username: ASUS_X1605VA\akshi
+RunAs User: ASUS_X1605VA\akshi
+Configuration Name: 
+Machine: ASUS_X1605VA (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\install_msix.ps1
+Process ID: 8356
+PSVersion: 5.1.26100.8521
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8521
+BuildVersion: 10.0.26100.8521
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is C:\Users\akshi\Documents\GhostClawUI\install_log.txt
+============================================================
+  GhostClawUI Version 2.0.0.0 Upgrade & Sideload Utility
+============================================================
+
+[1/3] Stopping background service and active processes...
+[2/3] Registering certificate for current user...
+PS>TerminatingError(Import-PfxCertificate): "The PFX file you are trying to import requires either a different password or membership in an Active Directory principal to which it is protected."
+Warning: Certificate registration skipped or failed, continuing deployment: The PFX file you are trying to import requires either a different password or membership in an Active Directory principal to which it is protected.
+[3/3] Uninstalling existing app package...
+VERBOSE: Performing the operation "Remove package" on target "GhostClawUI_2.0.0.0_x64__0694peptf573c".
+VERBOSE: Operation completed for: GhostClawUI_2.0.0.0_x64__0694peptf573c
+Installing package: C:\Users\akshi\Documents\GhostClawUI\src\GhostClawUI.App\AppPackages\GhostClawUI.App_2.0.0.0_x64_Test\GhostClawUI.App_2.0.0.0_x64.msix
+VERBOSE: Performing the operation "Deploy package" on target "C:\Users\akshi\Documents\GhostClawUI\src\GhostClawUI.App\AppPackages\GhostClawUI.App_2.0.0.0_x64_Test\GhostClawUI.App_2.0.0.0_x64.msix".
+Add-AppxPackage : Deployment failed with HRESULT: 0x800B0100, No signature was present in the subject.
+
+error 0x800B0100: The app package must be digitally signed for signature validation.
+
+NOTE: For additional information, look for [ActivityId] 5d0dc7fe-ee48-0003-2379-e55d48eedc01 in the Event Log or use 
+the command line Get-AppPackageLog -ActivityID 5d0dc7fe-ee48-0003-2379-e55d48eedc01
+
+At C:\Users\akshi\Documents\GhostClawUI\install_msix.ps1:40 char:5
++     Add-AppxPackage -Path $msixPath -Verbose
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\Users\akshi\....0.0.0_x64.msix:String) [Add-AppxPackage], Exception
+    + FullyQualifiedErrorId : DeploymentError,Microsoft.Windows.Appx.PackageManager.Commands.AddAppxPackageCommand
+Add-AppxPackage : Deployment failed with HRESULT: 0x800B0100, No signature was present in the subject.
+
+error 0x800B0100: The app package must be digitally signed for signature validation.
+
+NOTE: For additional information, look for [ActivityId] 5d0dc7fe-ee48-0003-2379-e55d48eedc01 in the Event Log or use
+the command line Get-AppPackageLog -ActivityID 5d0dc7fe-ee48-0003-2379-e55d48eedc01
+
+At C:\Users\akshi\Documents\GhostClawUI\install_msix.ps1:40 char:5
++     Add-AppxPackage -Path $msixPath -Verbose
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\Users\akshi\....0.0.0_x64.msix:String) [Add-AppxPackage], Exception
+    + FullyQualifiedErrorId : DeploymentError,Microsoft.Windows.Appx.PackageManager.Commands.AddAppxPackageCommand
+
+VERBOSE: Operation completed for: C:\Users\akshi\Documents\GhostClawUI\src\GhostClawUI.App\AppPackages\GhostClawUI.App_2.0.0.0_x64_Test\GhostClawUI.App_2.0.0.0_x64.msix
+
+============================================================
+  Upgrade completed successfully!
+============================================================
+**********************
+Windows PowerShell transcript end
+End time: 20260606123157
+**********************

@@ -22,15 +22,6 @@ internal sealed partial class MainWindow : Window, IDisposable
 {
     private readonly PipeClient _pipe = new();
     private readonly CredentialVault _vault = new();
-    private readonly ContentControl _content = new()
-    {
-        HorizontalContentAlignment = HorizontalAlignment.Stretch,
-        VerticalContentAlignment = VerticalAlignment.Stretch
-    };
-    private readonly ListView _conversationList = new();
-    private readonly StackPanel _noticeHost = new();
-    private readonly ColumnDefinition _sidebarColumn = new() { Width = GridLength.Auto };
-    private readonly TextBlock _statusText = UiKit.Text("Service unknown", 12);
     private readonly Border _settingsDot = new() { Width = 8, Height = 8, CornerRadius = new CornerRadius(4), Background = UiKit.BrushFromHex("#64748B") };
     private readonly Border _collapsedSettingsDot = new() { Width = 8, Height = 8, CornerRadius = new CornerRadius(4), Background = UiKit.BrushFromHex("#64748B") };
     private readonly Dictionary<string, Border> _navButtons = new(StringComparer.OrdinalIgnoreCase);
@@ -40,9 +31,6 @@ internal sealed partial class MainWindow : Window, IDisposable
     private TrayHotkeyService? _tray;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _statusTimer;
     private Windows.Foundation.TypedEventHandler<Microsoft.UI.Dispatching.DispatcherQueueTimer, object>? _statusTimerHandler;
-    private FrameworkElement? _expandedSidebar;
-    private FrameworkElement? _collapsedSidebar;
-    private Border? _sidebarBorder;
     private bool _sidebarExpanded = true;
     private string _currentPage = "Chat";
 
@@ -60,7 +48,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         SystemBackdrop = new MicaBackdrop();
         TrySetWindowIcon();
         TrySetInitialWindowSize();
-        BuildShell();
+        InitializeSidebar();
         RootHost.ActualThemeChanged += (_, _) => ApplyShellPalette();
         ApplyShellPalette();
         _tray = new TrayHotkeyService(this, () => ShowPage("Chat"), () => ShowPage("Settings"), Close, OpenQuickPrompt);
@@ -175,5 +163,76 @@ internal sealed partial class MainWindow : Window, IDisposable
         _statusTimerHandler = async (_, _) => await RefreshStatusAsync().ConfigureAwait(false);
         _statusTimer.Tick += _statusTimerHandler;
         _statusTimer.Start();
+    }
+
+    private void InitializeSidebar()
+    {
+        var search = UiKit.TextBox("Search", "Search conversations");
+        search.Background = UiKit.SidebarControlBrush;
+        search.Foreground = UiKit.SidebarTextBrush;
+        search.PlaceholderForeground = UiKit.SidebarMutedBrush;
+        search.BorderBrush = UiKit.SidebarBorderBrush;
+        search.Margin = new Thickness(0, 8, 0, 6);
+        search.TextChanged += async (_, _) => await RefreshConversationsAsync(search.Text).ConfigureAwait(false);
+        _searchHost.Children.Add(search);
+
+        _newChatHost.Children.Add(UiKit.PrimaryButton("New Chat", Symbol.Add, (_, _) =>
+        {
+            _currentConversationId = null;
+            ShowPage("Chat");
+        }));
+
+        _navStack.Children.Add(NavButton("Chat", "\uE8F2")); // ChatBubbles
+        _navStack.Children.Add(NavButton("Providers", "\uE82D")); // Server
+        _navStack.Children.Add(NavButton("MCPs", "\uEA42")); // Puzzle piece
+        _navStack.Children.Add(NavButton("Skills", "\uE829")); // Lightbulb
+        _navStack.Children.Add(NavButton("Social", "\uE716")); // People
+        _navStack.Children.Add(NavButton("Appearance", "\uE790")); // ColorPalette
+        _navStack.Children.Add(NavButton("Settings", "\uE713")); // Settings
+
+        _conversationList.SelectionChanged += (_, _) =>
+        {
+            var summary = (_conversationList.SelectedItem as ListViewItem)?.Tag as ConversationSummary
+                          ?? _conversationList.SelectedItem as ConversationSummary;
+            if (summary is not null)
+            {
+                _currentConversationId = summary.Id;
+                ShowPage("Chat");
+            }
+        };
+
+        _collapsedNavStack.Children.Add(IconNavButton("\uE72A", "Expand sidebar", ToggleSidebar)); // Forward
+        _collapsedNavStack.Children.Add(IconNavButton("\uE8F2", "Chat", () => ShowPage("Chat")));
+        _collapsedNavStack.Children.Add(IconNavButton("\uE82D", "Providers", () => ShowPage("Providers")));
+        _collapsedNavStack.Children.Add(IconNavButton("\uEA42", "MCPs", () => ShowPage("MCPs")));
+        _collapsedNavStack.Children.Add(IconNavButton("\uE829", "Skills", () => ShowPage("Skills")));
+        _collapsedNavStack.Children.Add(IconNavButton("\uE716", "Social", () => ShowPage("Social")));
+        _collapsedNavStack.Children.Add(IconNavButton("\uE790", "Appearance", () => ShowPage("Appearance")));
+        _collapsedNavStack.Children.Add(IconNavButton("\uE713", "Settings", () => ShowPage("Settings")));
+
+        _sidebarBorder.Background = UiKit.SidebarBrush;
+        _sidebarBorder.BorderBrush = UiKit.SidebarBorderBrush;
+        
+        _workspaceLabel.Foreground = UiKit.SidebarMutedBrush;
+        _chatsLabel.Foreground = UiKit.SidebarMutedBrush;
+        _brandName.Foreground = UiKit.SidebarTextBrush;
+        _statusText.Foreground = UiKit.SidebarMutedBrush;
+        
+        _collapseButton.PointerEntered += (s, e) =>
+        {
+            _collapseButton.Background = UiKit.SidebarHoverBrush;
+            var isDark = RootHost.ActualTheme == ElementTheme.Dark;
+            _collapseIcon.Foreground = isDark ? new SolidColorBrush(Microsoft.UI.Colors.White) : UiKit.AccentBrush;
+        };
+        _collapseButton.PointerExited += (s, e) =>
+        {
+            _collapseButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+            _collapseIcon.Foreground = UiKit.SidebarMutedBrush;
+        };
+        _collapseButton.Click += (_, _) => ToggleSidebar();
+        
+        _brandBtn.PointerEntered += (s, _) => { if (s is Border b) b.Background = UiKit.SidebarHoverBrush; };
+        _brandBtn.PointerExited += (s, _) => { if (s is Border b) b.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0)); };
+        _brandBtn.Tapped += (s, _) => { _currentConversationId = null; ShowPage("Chat"); };
     }
 }

@@ -184,6 +184,44 @@ internal sealed class WhatsAppService : BackgroundService
         }
     }
 
+    private async Task<string?> DownloadWhatsAppMediaAsync(string mediaId, string fileNameHint, WhatsAppSettings settings, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var url = $"https://graph.facebook.com/v17.0/{mediaId}";
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.AccessToken);
+            using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) return null;
+            
+            var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("url", out var urlEl)) return null;
+            
+            var downloadUrl = urlEl.GetString();
+            if (string.IsNullOrEmpty(downloadUrl)) return null;
+
+            using var dlReq = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
+            dlReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.AccessToken);
+            using var dlRes = await _httpClient.SendAsync(dlReq, cancellationToken).ConfigureAwait(false);
+            if (!dlRes.IsSuccessStatusCode) return null;
+
+            var tempDir = Path.Combine(Path.GetTempPath(), "GhostClawWhatsAppAttachments");
+            Directory.CreateDirectory(tempDir);
+            var localPath = Path.Combine(tempDir, fileNameHint);
+
+            using var fileStream = File.Create(localPath);
+            using var downloadStream = await dlRes.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            await downloadStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+            return localPath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to download WhatsApp media {MediaId}", mediaId);
+            return null;
+        }
+    }
+
     private async Task HandleWhatsAppMessageAsync(JsonElement msgEl, WhatsAppSettings settings, CancellationToken cancellationToken)
     {
         if (!msgEl.TryGetProperty("from", out var fromEl)) return;
@@ -196,6 +234,48 @@ internal sealed class WhatsAppService : BackgroundService
             text = bodyEl.GetString();
         }
 
+        var attachments = new List<ChatAttachment>();
+        
+        // Parse incoming media
+        var mediaTypes = new[] { "image", "audio", "video", "document" };
+        foreach (var mType in mediaTypes)
+        {
+            if (msgEl.TryGetProperty(mType, out var mediaEl) && mediaEl.ValueKind == JsonValueKind.Object)
+            {
+                if (mediaEl.TryGetProperty("id", out var idEl))
+                {
+                    var mediaId = idEl.GetString();
+                    var mimeType = mediaEl.TryGetProperty("mime_type", out var mimeEl) ? mimeEl.GetString() : "application/octet-stream";
+                    var ext = mType switch { "image" => ".jpg", "audio" => ".ogg", "video" => ".mp4", "document" => ".bin", _ => ".bin" };
+                    if (mediaEl.TryGetProperty("filename", out var fnEl)) ext = fnEl.GetString() ?? ext;
+
+                    var fileName = $"wa_{mType}_{Guid.NewGuid().ToString("N")[..8]}{ext}";
+                    
+                    if (!string.IsNullOrEmpty(mediaId))
+                    {
+                        var localPath = await DownloadWhatsAppMediaAsync(mediaId, fileName, settings, cancellationToken).ConfigureAwait(false);
+                        if (localPath != null)
+                        {
+                            var size = new FileInfo(localPath).Length;
+                            string? textPreview = null;
+                            if (mType == "document" || mimeType?.Contains("text") == true)
+                            {
+                                textPreview = await FileTextExtractor.ReadTextPreviewAsync(localPath, size, 100000).ConfigureAwait(false);
+                            }
+                            attachments.Add(new ChatAttachment(
+                                Name: fileName,
+                                Path: localPath,
+                                ContentType: mimeType ?? "application/octet-stream",
+                                SizeBytes: size,
+                                TextPreview: textPreview,
+                                DataUri: null
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
         var trimmed = text?.Trim() ?? "";
         if (trimmed.Equals("/clear", StringComparison.OrdinalIgnoreCase))
         {
@@ -206,7 +286,14 @@ internal sealed class WhatsAppService : BackgroundService
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            return;
+            if (attachments.Count > 0)
+            {
+                text = $"Analyze the attached file{(attachments.Count == 1 ? "" : "s")}.";
+            }
+            else
+            {
+                return;
+            }
         }
 
         var appSettings = _store.GetSettings();
@@ -230,6 +317,9 @@ internal sealed class WhatsAppService : BackgroundService
 
         _store.GetOrCreateConversation(conversationId);
 
+        // Send Thinking message
+        var thinkingMsgId = await SendWhatsAppMessageAsync(senderPhoneNumber, "Thinking...", settings, cancellationToken).ConfigureAwait(false);
+
         PipeEnvelope? responseEnvelope = null;
         try
         {
@@ -240,7 +330,7 @@ internal sealed class WhatsAppService : BackgroundService
                 Content: text,
                 WhisperMode: false,
                 Verbosity: "Normal",
-                Attachments: null,
+                Attachments: attachments.Count > 0 ? attachments : null,
                 AgentMode: true
             );
 
@@ -275,15 +365,39 @@ internal sealed class WhatsAppService : BackgroundService
                 {
                     var replyText = result.AssistantMessage.Content;
                     await SendWhatsAppMessageAsync(senderPhoneNumber, replyText, settings, cancellationToken).ConfigureAwait(false);
+
+                    // Send generated attachments
+                    var replyAttachments = ReadAttachments(result.AssistantMessage.Metadata);
+                    foreach (var att in replyAttachments)
+                    {
+                        if (!string.IsNullOrWhiteSpace(att.Path) && File.Exists(att.Path))
+                        {
+                            await SendWhatsAppMessageAsync(senderPhoneNumber, $"Sending generated file: {att.Name}", settings, cancellationToken).ConfigureAwait(false);
+                            await UploadAndSendWhatsAppMediaAsync(senderPhoneNumber, att.Path, att.Name, settings, cancellationToken).ConfigureAwait(false);
+                        }
+                    }
                 }
             }
         }
     }
 
-    private async Task SendWhatsAppMessageAsync(string to, string text, WhatsAppSettings settings, CancellationToken cancellationToken)
+    private static IReadOnlyList<ChatAttachment> ReadAttachments(JsonNode? metadata)
     {
         try
         {
+            return metadata?["attachments"]?.Deserialize<IReadOnlyList<ChatAttachment>>(PipeJson.Options) ?? Array.Empty<ChatAttachment>();
+        }
+        catch
+        {
+            return Array.Empty<ChatAttachment>();
+        }
+    }
+
+    private async Task<string?> SendWhatsAppMessageAsync(string to, string text, WhatsAppSettings settings, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var formattedText = SocialMessageFormatter.ToWhatsAppMarkdown(text);
             var url = $"https://graph.facebook.com/v17.0/{settings.PhoneNumberId}/messages";
             var payload = new JsonObject
             {
@@ -294,7 +408,7 @@ internal sealed class WhatsAppService : BackgroundService
                 ["text"] = new JsonObject
                 {
                     ["preview_url"] = false,
-                    ["body"] = text
+                    ["body"] = formattedText
                 }
             };
 
@@ -308,10 +422,73 @@ internal sealed class WhatsAppService : BackgroundService
                 var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 _logger.LogWarning("WhatsApp sendMessage failed: {StatusCode}, Body: {Body}", response.StatusCode, body);
             }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("messages", out var msgs) && msgs.ValueKind == JsonValueKind.Array && msgs.GetArrayLength() > 0)
+                {
+                    return msgs[0].GetProperty("id").GetString();
+                }
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send WhatsApp message to {To}", to);
+        }
+        return null;
+    }
+
+    private async Task UploadAndSendWhatsAppMediaAsync(string to, string filePath, string fileName, WhatsAppSettings settings, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Upload
+            var uploadUrl = $"https://graph.facebook.com/v17.0/{settings.PhoneNumberId}/media";
+            using var form = new MultipartFormDataContent();
+            form.Add(new StringContent("whatsapp"), "messaging_product");
+            var fileBytes = await File.ReadAllBytesAsync(filePath, cancellationToken).ConfigureAwait(false);
+            using var fileContent = new ByteArrayContent(fileBytes);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            form.Add(fileContent, "file", fileName);
+
+            using var uploadReq = new HttpRequestMessage(HttpMethod.Post, uploadUrl) { Content = form };
+            uploadReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.AccessToken);
+            using var uploadRes = await _httpClient.SendAsync(uploadReq, cancellationToken).ConfigureAwait(false);
+            if (!uploadRes.IsSuccessStatusCode)
+            {
+                 var err = await uploadRes.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                 _logger.LogWarning("WhatsApp media upload failed: {Err}", err);
+                 return;
+            }
+            var json = await uploadRes.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("id", out var idEl)) return;
+            var mediaId = idEl.GetString();
+
+            // Send
+            var sendUrl = $"https://graph.facebook.com/v17.0/{settings.PhoneNumberId}/messages";
+            var payload = new JsonObject
+            {
+                ["messaging_product"] = "whatsapp",
+                ["recipient_type"] = "individual",
+                ["to"] = to,
+                ["type"] = "document",
+                ["document"] = new JsonObject
+                {
+                    ["id"] = mediaId,
+                    ["filename"] = fileName
+                }
+            };
+
+            using var sendReq = new HttpRequestMessage(HttpMethod.Post, sendUrl);
+            sendReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.AccessToken);
+            sendReq.Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+            await _httpClient.SendAsync(sendReq, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send WhatsApp document to {To}", to);
         }
     }
 }

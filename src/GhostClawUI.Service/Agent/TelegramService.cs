@@ -476,7 +476,7 @@ internal sealed class TelegramService : BackgroundService
             var url = $"https://api.telegram.org/bot{token}/sendMessage";
             int chunkSize = 4000;
 
-            var htmlText = ConvertMarkdownToHtml(text);
+            var htmlText = SocialMessageFormatter.ToTelegramHtml(text);
             var chunks = ChunkHtmlSafely(htmlText, chunkSize);
 
             foreach (var chunk in chunks)
@@ -610,24 +610,4 @@ internal sealed class TelegramService : BackgroundService
         }
     }
 
-    private static string ConvertMarkdownToHtml(string markdown)
-    {
-        if (string.IsNullOrEmpty(markdown)) return "";
-
-        var html = markdown
-            .Replace("&", "&amp;")
-            .Replace("<", "&lt;")
-            .Replace(">", "&gt;");
-
-        // Convert bold
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*\*(.+?)\*\*", "<b>$1</b>");
-        // Convert italic
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", "<i>$1</i>");
-        // Convert inline code
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"`([^`]+)`", "<code>$1</code>");
-        // Convert code blocks
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"```\w*\n([\s\S]*?)```", "<pre><code>$1</code></pre>");
-
-        return html;
-    }
 }

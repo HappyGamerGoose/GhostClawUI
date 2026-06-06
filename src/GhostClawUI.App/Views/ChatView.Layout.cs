@@ -95,6 +95,7 @@ internal sealed partial class ChatView
             Padding = new Thickness(16, 8, 16, 12),
             CornerRadius = new CornerRadius(16)
         };
+        UiKit.AddElevation(root, 24);
         _composerBorder = root;
 
         var mainLayout = new Grid

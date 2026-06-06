@@ -252,13 +252,13 @@ internal static class UiKit
 
     public static void SetShellPalette(bool dark)
     {
-        SetBrush(SidebarBrush, Colors.Transparent);
-        SetBrush(SidebarHoverBrush, dark ? "#15FFFFFF" : "#10000000");
+        SetBrush(SidebarBrush, dark ? "#05FFFFFF" : "#05000000");
+        SetBrush(SidebarHoverBrush, dark ? "#0AFFFFFF" : "#0A000000");
         SetBrush(SidebarTextBrush, dark ? "#F8FAFC" : "#111827");
         SetBrush(SidebarMutedBrush, dark ? "#9CA3AF" : "#64748B");
         SetBrush(SidebarBorderBrush, dark ? "#15FFFFFF" : "#15000000");
-        SetBrush(SidebarDividerBrush, dark ? "#20FFFFFF" : "#15000000");
-        SetBrush(SidebarControlBrush, dark ? "#10FFFFFF" : "#0A000000");
+        SetBrush(SidebarDividerBrush, dark ? "#15FFFFFF" : "#15000000");
+        SetBrush(SidebarControlBrush, dark ? "#08FFFFFF" : "#08000000");
     }
 
     private static void SetBrush(SolidColorBrush target, Windows.UI.Color color)
@@ -276,15 +276,22 @@ internal static class UiKit
         return fallback;
     }
 
+    public static void AddElevation(UIElement element, float depth = 16)
+    {
+        element.Shadow = new ThemeShadow();
+        element.Translation = new System.Numerics.Vector3(0, 0, depth);
+    }
+
     public static void AddHoverScale(UIElement element)
     {
         element.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
         var scale = new ScaleTransform { ScaleX = 1, ScaleY = 1 };
         element.RenderTransform = scale;
 
+        var easeEnter = new Microsoft.UI.Xaml.Media.Animation.CircleEase { EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut };
         var enterStoryboard = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
-        var enterX = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation { To = 1.015, Duration = new Duration(TimeSpan.FromMilliseconds(150)) };
-        var enterY = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation { To = 1.015, Duration = new Duration(TimeSpan.FromMilliseconds(150)) };
+        var enterX = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation { To = 1.015, Duration = new Duration(TimeSpan.FromMilliseconds(150)), EasingFunction = easeEnter };
+        var enterY = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation { To = 1.015, Duration = new Duration(TimeSpan.FromMilliseconds(150)), EasingFunction = easeEnter };
         Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(enterX, scale);
         Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(enterX, "ScaleX");
         Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(enterY, scale);
@@ -292,9 +299,10 @@ internal static class UiKit
         enterStoryboard.Children.Add(enterX);
         enterStoryboard.Children.Add(enterY);
 
+        var easeExit = new Microsoft.UI.Xaml.Media.Animation.CircleEase { EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut };
         var exitStoryboard = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
-        var exitX = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation { To = 1.0, Duration = new Duration(TimeSpan.FromMilliseconds(250)) };
-        var exitY = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation { To = 1.0, Duration = new Duration(TimeSpan.FromMilliseconds(250)) };
+        var exitX = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation { To = 1.0, Duration = new Duration(TimeSpan.FromMilliseconds(250)), EasingFunction = easeExit };
+        var exitY = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation { To = 1.0, Duration = new Duration(TimeSpan.FromMilliseconds(250)), EasingFunction = easeExit };
         Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(exitX, scale);
         Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(exitX, "ScaleX");
         Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(exitY, scale);

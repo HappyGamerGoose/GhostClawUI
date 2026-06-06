@@ -367,6 +367,7 @@ internal sealed partial class ChatView
                 ? ErrorSurfaceBrush()
                 : isUser ? UserBubbleBrush() : AssistantBubbleBrush()
         };
+        UiKit.AddElevation(bubbleBorder, 16);
 
         var container = new StackPanel
         {

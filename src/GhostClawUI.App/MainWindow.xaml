@@ -5,6 +5,11 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="GhostClawUI">
     <Grid x:Name="RootHost">
+        <Grid.ChildrenTransitions>
+            <TransitionCollection>
+                <EntranceThemeTransition FromVerticalOffset="20" />
+            </TransitionCollection>
+        </Grid.ChildrenTransitions>
         <Grid Background="Transparent">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="_sidebarColumn" Width="Auto" />

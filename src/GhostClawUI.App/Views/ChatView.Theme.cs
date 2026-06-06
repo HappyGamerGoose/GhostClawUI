@@ -37,10 +37,10 @@ internal sealed partial class ChatView
     private static SolidColorBrush ChatBackgroundBrush() => new SolidColorBrush(Microsoft.UI.Colors.Transparent);
 
 
-    private Brush SurfaceBrush() => IsDarkMode ? UiKit.BrushFromHex("#B8252B36") : ResourceBrush("LayerFillColorDefaultBrush", "#B8FFFFFF");
+    private Brush SurfaceBrush() => IsDarkMode ? UiKit.BrushFromHex("#40252B36") : ResourceBrush("LayerFillColorDefaultBrush", "#A0FFFFFF");
 
 
-    private Brush ComposerBackgroundBrush() => ResourceBrush("LayerFillColorDefaultBrush", IsDarkMode ? "#10151C" : "#F8FAFC");
+    private Brush ComposerBackgroundBrush() => ResourceBrush("LayerFillColorDefaultBrush", IsDarkMode ? "#4010151C" : "#80F8FAFC");
 
 
     private Brush AssistantBubbleBrush() => ResourceBrush("CardBackgroundFillColorSecondaryBrush", IsDarkMode ? "#252B36" : "#FFFFFF");
@@ -52,7 +52,7 @@ internal sealed partial class ChatView
     private Brush UserBubbleBorderBrush() => ResourceBrush("AccentFillColorDefaultBrush", UiKit.AccentBrush.Color.ToString());
 
 
-    private Brush ControlSurfaceBrush() => ResourceBrush("ControlFillColorDefaultBrush", IsDarkMode ? "#303746" : "#FFFFFF");
+    private Brush ControlSurfaceBrush() => ResourceBrush("ControlFillColorDefaultBrush", IsDarkMode ? "#50303746" : "#A0FFFFFF");
 
 
     private Brush StrokeBrush() => ResourceBrush("CardStrokeColorDefaultBrush", IsDarkMode ? "#1AFFFFFF" : "#1A000000");

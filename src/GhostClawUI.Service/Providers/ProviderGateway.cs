@@ -162,7 +162,7 @@ internal sealed class ProviderGateway
         builder.AppendLine("Format replies in clean Markdown. Use fenced code blocks for code and $...$ or $$...$$ for math. Keep image/file references explicit and readable.");
         builder.AppendLine("Never expose raw tool-call JSON, XML tags, function-call arguments, MCP request payloads, or assistant-to-tool frames to the user. If tool activity matters, describe the outcome in natural language.");
         builder.AppendLine("For current or recent information, use available search/browser tools when the agent runtime exposes them. If no search tool is available, say what needs to be connected instead of guessing.");
-        
+
         // System-level file generation instructions to guarantee actual creation and avoid path/attachment hallucinations
         builder.AppendLine("=== CRITICAL FILE CREATION RULE ===");
         builder.AppendLine("If the user asks you to create, design, or attach a file (such as a PowerPoint presentation, Excel spreadsheet, Word document, PDF, zip, image, text, or CSV), you MUST generate it by writing the complete, self-contained Python script to create that file, and wrap it inside a ```python ... ``` code block. NEVER say you have created, attached, or saved a file unless your exact response contains the ```python ... ``` block that actually generates it!");
@@ -179,7 +179,7 @@ internal sealed class ProviderGateway
         builder.AppendLine("2. For ReportLab PDF generation: ALWAYS import standard alignment constants with underscores (e.g. TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT) from 'reportlab.lib.enums'. NEVER write TACENTER, TAJUSTIFY, TALEFT, or TARIGHT without underscores.");
         builder.AppendLine("3. For python-pptx presentations: NEVER use non-existent methods like '.fit_text()' or '.autofit()' on text frames or shapes. Use standard font sizing and word wrap features.");
         builder.AppendLine("===================================");
-        
+
         builder.AppendLine("=== DEEP INSPECTION & BRAINSTORMING ===");
         builder.AppendLine("When faced with a complex task or error, you MUST wrap your thought process in a <think>...</think> block. Inside this block, perform Deep Inspection (break down the problem, examine the root cause of errors, analyze data context) and Brainstorming (list out at least 2-3 distinct approaches, weigh their pros and cons, and choose the most robust one) before you output your final answer or tool payload.");
         builder.AppendLine("This guarantees high-quality, agentic reasoning.");

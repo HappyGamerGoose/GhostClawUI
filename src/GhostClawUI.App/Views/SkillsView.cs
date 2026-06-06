@@ -64,7 +64,7 @@ internal sealed class SkillsView : UserControl
         headerInfo.Children.Add(UiKit.Muted("Browse installed skills and inject them as context into your chat messages.", 14));
         headerGrid.Children.Add(headerInfo);
 
-        var addSkillBtn = UiKit.PrimaryButton("Add Skill", Symbol.Add, async (_, _) => await AddSkillDialogAsync());
+        var addSkillBtn = UiKit.PrimaryButton("Add Skill", Symbol.Add, async (_, _) => await AddSkillDialogAsync().ConfigureAwait(false));
         addSkillBtn.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(addSkillBtn, 1);
         headerGrid.Children.Add(addSkillBtn);
@@ -85,7 +85,7 @@ internal sealed class SkillsView : UserControl
         _search.TextChanged += (_, _) => FilterSkills(_search.Text);
         searchRow.Children.Add(_search);
 
-        var refreshBtn = UiKit.Button("Refresh", Symbol.Refresh, async (_, _) => await LoadSkillsAsync());
+        var refreshBtn = UiKit.Button("Refresh", Symbol.Refresh, async (_, _) => await LoadSkillsAsync().ConfigureAwait(false));
         refreshBtn.MinHeight = 36;
         Grid.SetColumn(refreshBtn, 1);
         searchRow.Children.Add(refreshBtn);
@@ -113,7 +113,7 @@ internal sealed class SkillsView : UserControl
             _listPanel.Children.Clear();
             _listPanel.Children.Add(LoadingState());
 
-            _allSkills = await _pipe.RequestAsync<IReadOnlyList<SkillSummary>>("skills.list") ?? Array.Empty<SkillSummary>();
+            _allSkills = await _pipe.RequestAsync<IReadOnlyList<SkillSummary>>("skills.list").ConfigureAwait(false) ?? Array.Empty<SkillSummary>();
             FilterSkills(_search.Text);
         }
         catch (Exception ex)
@@ -208,7 +208,7 @@ internal sealed class SkillsView : UserControl
             MinHeight = 32
         };
         AutomationProperties.SetName(copyBtn, $"Copy skill {skill.Name}");
-        copyBtn.Click += async (_, _) => await CopySkillAsync(skill);
+        copyBtn.Click += async (_, _) => await CopySkillAsync(skill).ConfigureAwait(false);
         actions.Children.Add(copyBtn);
 
         Grid.SetColumn(actions, 1);
@@ -223,7 +223,7 @@ internal sealed class SkillsView : UserControl
     {
         try
         {
-            var result = await _pipe.RequestAsync<CommandResult>("skills.read", new SimpleIdRequest(skill.Id));
+            var result = await _pipe.RequestAsync<CommandResult>("skills.read", new SimpleIdRequest(skill.Id)).ConfigureAwait(false);
             if (result?.Success != true)
             {
                 _notice("Preview failed", result?.Message ?? "Unknown error", InfoBarSeverity.Error);
@@ -262,7 +262,7 @@ internal sealed class SkillsView : UserControl
             var dialogResult = await dialog.ShowAsync();
             if (dialogResult == ContentDialogResult.Primary)
             {
-                await CopyToClipboardAsync(content);
+                await CopyToClipboardAsync(content).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -275,10 +275,10 @@ internal sealed class SkillsView : UserControl
     {
         try
         {
-            var result = await _pipe.RequestAsync<CommandResult>("skills.read", new SimpleIdRequest(skill.Id));
+            var result = await _pipe.RequestAsync<CommandResult>("skills.read", new SimpleIdRequest(skill.Id)).ConfigureAwait(false);
             if (result?.Success == true && !string.IsNullOrWhiteSpace(result.Message))
             {
-                await CopyToClipboardAsync(result.Message);
+                await CopyToClipboardAsync(result.Message).ConfigureAwait(false);
                 _notice("Copied", $"'{skill.Name}' content copied to clipboard.", InfoBarSeverity.Success);
             }
             else
@@ -297,7 +297,7 @@ internal sealed class SkillsView : UserControl
         var data = new Windows.ApplicationModel.DataTransfer.DataPackage();
         data.SetText(text);
         Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     private async Task AddSkillDialogAsync()
@@ -416,7 +416,7 @@ internal sealed class SkillsView : UserControl
 
             try
             {
-                var result = await _pipe.RequestAsync<CommandResult>("skills.upsert", new SkillUpsertRequest(name, desc ?? string.Empty, selectedContent));
+                var result = await _pipe.RequestAsync<CommandResult>("skills.upsert", new SkillUpsertRequest(name, desc ?? string.Empty, selectedContent)).ConfigureAwait(false);
                 if (result?.Success == true)
                 {
                     _notice("Success", $"Skill '{name}' added successfully.", InfoBarSeverity.Success);

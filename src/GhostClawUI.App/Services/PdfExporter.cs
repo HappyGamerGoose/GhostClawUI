@@ -68,7 +68,7 @@ internal static class PdfExporter
         container.PaddingVertical(10).Column(column =>
         {
             column.Spacing(25);
-            
+
             var visibleMessages = messages.Where(m => !string.Equals(m.Kind, "status", StringComparison.OrdinalIgnoreCase)).ToList();
 
             foreach (var msg in visibleMessages)
@@ -80,8 +80,8 @@ internal static class PdfExporter
                     catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Error deserializing attachments: {ex}"); }
                 }
 
-                string displayContent = string.Equals(msg.Role, "user", StringComparison.OrdinalIgnoreCase) 
-                    ? msg.Content 
+                string displayContent = string.Equals(msg.Role, "user", StringComparison.OrdinalIgnoreCase)
+                    ? msg.Content
                     : GhostClawUI.Shared.ResponseTextSanitizer.CleanForDisplay(msg.Content);
 
                 if (!string.Equals(msg.Role, "user", StringComparison.OrdinalIgnoreCase) && HasGeneratedFiles(msg.Metadata))
@@ -130,28 +130,28 @@ internal static class PdfExporter
                     {
                         if (block.Type == BlockType.Text)
                         {
-                            contentCol.Item().Text(textDesc => 
+                            contentCol.Item().Text(textDesc =>
                             {
                                 AddMarkdownInlines(textDesc, block.Content, isUser, textColor, 10.5f, false);
                             });
                         }
                         else if (block.Type == BlockType.Header1)
                         {
-                            contentCol.Item().Text(textDesc => 
+                            contentCol.Item().Text(textDesc =>
                             {
                                 AddMarkdownInlines(textDesc, block.Content, isUser, isUser ? Colors.White : Colors.Black, 16f, true);
                             });
                         }
                         else if (block.Type == BlockType.Header2)
                         {
-                            contentCol.Item().Text(textDesc => 
+                            contentCol.Item().Text(textDesc =>
                             {
                                 AddMarkdownInlines(textDesc, block.Content, isUser, isUser ? Colors.White : Colors.Black, 14f, true);
                             });
                         }
                         else if (block.Type == BlockType.Header3)
                         {
-                            contentCol.Item().Text(textDesc => 
+                            contentCol.Item().Text(textDesc =>
                             {
                                 AddMarkdownInlines(textDesc, block.Content, isUser, isUser ? Colors.White : Colors.Grey.Darken4, 12f, true);
                             });
@@ -291,7 +291,7 @@ internal static class PdfExporter
             {
                 if (idx == minIndex && marker.Length < bestMarker.Length)
                     continue;
-                
+
                 minIndex = idx;
                 bestMarker = marker;
             }
@@ -459,15 +459,15 @@ internal static class PdfExporter
     private static string StripFileGenerationCode(string content)
     {
         if (string.IsNullOrEmpty(content)) return content;
-        
+
         var regex = new System.Text.RegularExpressions.Regex(
-            @"`{3}python[ \t]*\r?\n([\s\S]*?)(?:`{3}|$)", 
+            @"`{3}python[ \t]*\r?\n([\s\S]*?)(?:`{3}|$)",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase
         );
-        
+
         var matches = regex.Matches(content);
         var sb = new StringBuilder(content);
-        
+
         foreach (System.Text.RegularExpressions.Match match in matches)
         {
             var code = match.Groups[1].Value;
@@ -476,7 +476,7 @@ internal static class PdfExporter
                 sb.Replace(match.Value, "");
             }
         }
-        
+
         var cleaned = sb.ToString();
         cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, @"\n{3,}", "\n\n");
         return cleaned.Trim();

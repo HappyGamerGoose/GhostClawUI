@@ -40,7 +40,7 @@ internal sealed class AppearanceView : UserControl
             _saveTimer.Stop();
             try
             {
-                await SaveAsync(showNotice: false);
+                await SaveAsync(showNotice: false).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -48,7 +48,7 @@ internal sealed class AppearanceView : UserControl
             }
         };
         _saveTimer.Tick += _saveTimerHandler;
-        
+
         Unloaded += (s, e) =>
         {
             _saveTimer.Stop();
@@ -88,7 +88,7 @@ internal sealed class AppearanceView : UserControl
         _font.ItemsSource = new[] { "Segoe UI Variable", "Segoe UI", "Cascadia Code", "Aptos" };
         _density.ItemsSource = new[] { "Comfortable", "Compact" };
         _alignment.ItemsSource = new[] { "Split", "Left" };
-        
+
         var displayGroup = new StackPanel { Spacing = 12 };
         displayGroup.Children.Add(Labeled("Theme", _theme));
         displayGroup.Children.Add(Labeled("Font", _font));
@@ -116,12 +116,12 @@ internal sealed class AppearanceView : UserControl
                 BorderBrush = _accent == color ? UiKit.AccentBrush : new SolidColorBrush(Microsoft.UI.Colors.Transparent),
                 Tag = color
             };
-            
+
             var swatchWrapper = new SwatchBorder
             {
                 Content = swatch
             };
-            
+
             swatchWrapper.PointerEntered += (s, _) =>
             {
                 if (s is SwatchBorder wrapper && wrapper.Content is Border b)
@@ -141,7 +141,7 @@ internal sealed class AppearanceView : UserControl
                 _accent = color;
                 Preview();
                 QueueSave();
-                
+
                 foreach (var child in swatches.Children)
                 {
                     if (child is SwatchBorder wrapper && wrapper.Content is Border b)
@@ -171,7 +171,7 @@ internal sealed class AppearanceView : UserControl
             _lineHeight.Value = 1.35;
             _density.SelectedItem = "Comfortable";
             _alignment.SelectedItem = "Split";
-            
+
             foreach (var child in swatches.Children)
             {
                 if (child is SwatchBorder wrapper && wrapper.Content is Border b)
@@ -180,7 +180,7 @@ internal sealed class AppearanceView : UserControl
                     b.BorderBrush = _accent == tagHex ? UiKit.AccentBrush : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
                 }
             }
-            
+
             Preview();
             QueueSave();
         };
@@ -239,7 +239,7 @@ internal sealed class AppearanceView : UserControl
     private async Task SaveAsync(bool showNotice)
     {
         _settings = CurrentSettings();
-        await _pipe.RequestAsync<CommandResult>("settings.update", _settings);
+        await _pipe.RequestAsync<CommandResult>("settings.update", _settings).ConfigureAwait(false);
         if (showNotice)
         {
             _notice("Appearance saved", "Theme settings updated.", InfoBarSeverity.Success);

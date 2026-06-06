@@ -20,9 +20,9 @@ internal sealed class BackgroundWorkerService : BackgroundService
     private readonly ILogger<BackgroundWorkerService> _logger;
 
     public BackgroundWorkerService(
-        EncryptedStore store, 
+        EncryptedStore store,
         ProviderGateway providerGateway,
-        GhostClawAgentRunner agentRunner, 
+        GhostClawAgentRunner agentRunner,
         ILogger<BackgroundWorkerService> logger)
     {
         _store = store;
@@ -73,7 +73,7 @@ internal sealed class BackgroundWorkerService : BackgroundService
                 _logger.LogError(ex, "Background worker loop failed.");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken).ConfigureAwait(false);
         }
     }
 
@@ -144,14 +144,14 @@ internal sealed class BackgroundWorkerService : BackgroundService
                 task.ChatJid,
                 _ => { }, // No real-time traces needed in pure background
                 stoppingToken
-            );
+            ).ConfigureAwait(false);
 
             if (result.Success && !string.IsNullOrWhiteSpace(result.Content))
             {
                 _store.AddMessage(task.ChatJid, "assistant", result.Content, defaultProvider.Id, model, "chat");
                 ShowToastNotification("GhostClaw Proactive Agent", result.Content);
             }
-            
+
             var finalTask = updatedTask with { LastResult = result.Success ? "success" : "failed" };
             _store.UpsertScheduledTask(finalTask);
         }

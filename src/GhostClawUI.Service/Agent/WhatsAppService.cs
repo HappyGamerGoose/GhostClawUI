@@ -131,7 +131,7 @@ internal sealed class WhatsAppService : BackgroundService
             {
                 using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
                 var body = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-                
+
                 context.Response.StatusCode = 200;
                 var okBuffer = Encoding.UTF8.GetBytes("OK");
                 await context.Response.OutputStream.WriteAsync(okBuffer, cancellationToken).ConfigureAwait(false);

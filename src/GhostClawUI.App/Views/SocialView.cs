@@ -74,8 +74,8 @@ internal sealed class SocialView : UserControl
         tgForm.Children.Add(_telegramEnabled);
 
         var tgButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Margin = new Thickness(0, 10, 0, 0) };
-        tgButtons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveTelegramAsync()));
-        tgButtons.Children.Add(UiKit.Button("Refresh Status", Symbol.Sync, async (_, _) => await RefreshTelegramStatusAsync()));
+        tgButtons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveTelegramAsync().ConfigureAwait(false)));
+        tgButtons.Children.Add(UiKit.Button("Refresh Status", Symbol.Sync, async (_, _) => await RefreshTelegramStatusAsync().ConfigureAwait(false)));
         tgForm.Children.Add(tgButtons);
 
         var tgStatusRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
@@ -113,8 +113,8 @@ internal sealed class SocialView : UserControl
         waForm.Children.Add(_waEnabled);
 
         var waButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Margin = new Thickness(0, 10, 0, 0) };
-        waButtons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveWhatsAppAsync()));
-        waButtons.Children.Add(UiKit.Button("Refresh Status", Symbol.Sync, async (_, _) => await RefreshWhatsAppStatusAsync()));
+        waButtons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveWhatsAppAsync().ConfigureAwait(false)));
+        waButtons.Children.Add(UiKit.Button("Refresh Status", Symbol.Sync, async (_, _) => await RefreshWhatsAppStatusAsync().ConfigureAwait(false)));
         waForm.Children.Add(waButtons);
 
         var waStatusRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
@@ -176,7 +176,7 @@ internal sealed class SocialView : UserControl
     {
         try
         {
-            var tgSettings = await _pipe.RequestAsync<TelegramSettings>("telegram.get");
+            var tgSettings = await _pipe.RequestAsync<TelegramSettings>("telegram.get").ConfigureAwait(false);
             if (tgSettings != null)
             {
                 _botToken.Password = tgSettings.BotToken;
@@ -184,7 +184,7 @@ internal sealed class SocialView : UserControl
                 _telegramEnabled.IsOn = tgSettings.IsEnabled;
             }
 
-            var waSettings = await _pipe.RequestAsync<WhatsAppSettings>("whatsapp.get");
+            var waSettings = await _pipe.RequestAsync<WhatsAppSettings>("whatsapp.get").ConfigureAwait(false);
             if (waSettings != null)
             {
                 _waAccessToken.Password = waSettings.AccessToken;
@@ -194,8 +194,8 @@ internal sealed class SocialView : UserControl
                 _waEnabled.IsOn = waSettings.IsEnabled;
             }
 
-            await RefreshTelegramStatusAsync();
-            await RefreshWhatsAppStatusAsync();
+            await RefreshTelegramStatusAsync().ConfigureAwait(false);
+            await RefreshWhatsAppStatusAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -208,11 +208,11 @@ internal sealed class SocialView : UserControl
         try
         {
             var settings = new TelegramSettings(_botToken.Password.Trim(), _chatId.Text.Trim(), _telegramEnabled.IsOn);
-            var result = await _pipe.RequestAsync<CommandResult>("telegram.save", settings);
+            var result = await _pipe.RequestAsync<CommandResult>("telegram.save", settings).ConfigureAwait(false);
             if (result != null && result.Success)
             {
                 _notice("Telegram saved", result.Message, InfoBarSeverity.Success);
-                await RefreshTelegramStatusAsync();
+                await RefreshTelegramStatusAsync().ConfigureAwait(false);
             }
             else
             {
@@ -230,11 +230,11 @@ internal sealed class SocialView : UserControl
         try
         {
             var settings = new WhatsAppSettings(_waAccessToken.Password.Trim(), _waPhoneId.Text.Trim(), _waVerifyToken.Password.Trim(), _waWebhookPort.Text.Trim(), _waEnabled.IsOn);
-            var result = await _pipe.RequestAsync<CommandResult>("whatsapp.save", settings);
+            var result = await _pipe.RequestAsync<CommandResult>("whatsapp.save", settings).ConfigureAwait(false);
             if (result != null && result.Success)
             {
                 _notice("WhatsApp saved", result.Message, InfoBarSeverity.Success);
-                await RefreshWhatsAppStatusAsync();
+                await RefreshWhatsAppStatusAsync().ConfigureAwait(false);
             }
             else
             {
@@ -254,7 +254,7 @@ internal sealed class SocialView : UserControl
             _telegramStatusText.Text = "Checking connection status...";
             _telegramStatusBadge.Background = UiKit.BrushFromHex("#64748B");
 
-            var status = await _pipe.RequestAsync<CommandResult>("telegram.status");
+            var status = await _pipe.RequestAsync<CommandResult>("telegram.status").ConfigureAwait(false);
             if (status != null)
             {
                 _telegramStatusText.Text = status.Message;
@@ -275,7 +275,7 @@ internal sealed class SocialView : UserControl
             _waStatusText.Text = "Checking connection status...";
             _waStatusBadge.Background = UiKit.BrushFromHex("#64748B");
 
-            var status = await _pipe.RequestAsync<CommandResult>("whatsapp.status");
+            var status = await _pipe.RequestAsync<CommandResult>("whatsapp.status").ConfigureAwait(false);
             if (status != null)
             {
                 _waStatusText.Text = status.Message;

@@ -26,15 +26,15 @@ internal sealed class GhostClawSupervisor
         _paths = paths;
         _mcpCatalog = mcpCatalog;
         _logger = logger;
-        
+
         _ = Task.Run(async () =>
         {
             var logPath = Path.Combine(_paths.DataRoot, "ghostclaw.log");
-            await foreach (var line in _logQueue.Reader.ReadAllAsync())
+            await foreach (var line in _logQueue.Reader.ReadAllAsync().ConfigureAwait(false))
             {
                 try
                 {
-                    await File.AppendAllTextAsync(logPath, line);
+                    await File.AppendAllTextAsync(logPath, line).ConfigureAwait(false);
                 }
                 catch { }
             }

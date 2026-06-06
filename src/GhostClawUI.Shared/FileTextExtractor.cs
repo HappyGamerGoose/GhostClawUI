@@ -76,7 +76,7 @@ public static class FileTextExtractor
                     sb.Append(charBuffer, 0, read);
                     totalCharsRead += read;
                 }
-                
+
                 var result = sb.ToString();
                 return (totalCharsRead >= maxCharacters && reader.Peek() >= 0)
                     ? result + "\n..."
@@ -166,7 +166,7 @@ public static class FileTextExtractor
             using var entryStream = entry.Open();
             var settings = new System.Xml.XmlReaderSettings { DtdProcessing = System.Xml.DtdProcessing.Prohibit, Async = true };
             using var reader = System.Xml.XmlReader.Create(entryStream, settings);
-            
+
             var sb = new StringBuilder();
             while (await reader.ReadAsync().ConfigureAwait(false))
             {
@@ -196,7 +196,7 @@ public static class FileTextExtractor
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
             var sb = new StringBuilder();
-            
+
             int slideNum = 1;
             var settings = new System.Xml.XmlReaderSettings { DtdProcessing = System.Xml.DtdProcessing.Prohibit, Async = true };
             while (true)
@@ -211,10 +211,10 @@ public static class FileTextExtractor
 
                 using var entryStream = entry.Open();
                 using var reader = System.Xml.XmlReader.Create(entryStream, settings);
-                
+
                 bool hasText = false;
                 var slideSb = new StringBuilder();
-                
+
                 while (await reader.ReadAsync().ConfigureAwait(false))
                 {
                     if (reader.NodeType == System.Xml.XmlNodeType.Element && reader.LocalName == "t")
@@ -228,14 +228,14 @@ public static class FileTextExtractor
                         }
                     }
                 }
-                
+
                 if (hasText)
                 {
                     sb.AppendLine($"--- Slide {slideNum} ---");
                     sb.AppendLine(slideSb.ToString());
                     sb.AppendLine();
                 }
-                
+
                 slideNum++;
             }
 
@@ -256,7 +256,7 @@ public static class FileTextExtractor
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
             var settings = new System.Xml.XmlReaderSettings { DtdProcessing = System.Xml.DtdProcessing.Prohibit, Async = true };
-            
+
             var sharedStrings = new List<string>();
             var sharedStringsEntry = archive.GetEntry("xl/sharedStrings.xml");
             if (sharedStringsEntry != null)
@@ -287,17 +287,17 @@ public static class FileTextExtractor
 
                 using var entryStream = entry.Open();
                 using var reader = System.Xml.XmlReader.Create(entryStream, settings);
-                
+
                 sb.AppendLine($"--- Sheet {sheetNum} ---");
-                
+
                 bool inRow = false;
                 List<string> cellValues = null;
                 string currentCellType = "";
-                
+
                 while (await reader.ReadAsync().ConfigureAwait(false))
                 {
                     if (sb.Length >= maxCharacters) break;
-                    
+
                     if (reader.NodeType == System.Xml.XmlNodeType.Element)
                     {
                         if (reader.LocalName == "row")
@@ -337,7 +337,7 @@ public static class FileTextExtractor
                         }
                     }
                 }
-                
+
                 sb.AppendLine();
                 sheetNum++;
             }

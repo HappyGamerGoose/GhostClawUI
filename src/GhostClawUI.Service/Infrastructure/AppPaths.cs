@@ -46,8 +46,8 @@ internal sealed class AppPaths
                 {
                     File.Copy(legacyDb, DatabasePath, overwrite: true);
                 }
-                catch (Exception fallbackEx) 
-                { 
+                catch (Exception fallbackEx)
+                {
                     System.Diagnostics.Debug.WriteLine($"Database migration fallback failed: {fallbackEx}");
                 }
             }

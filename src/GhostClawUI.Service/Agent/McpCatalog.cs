@@ -40,11 +40,11 @@ internal sealed class McpCatalog
             server.Description.Contains(cleanQuery, StringComparison.OrdinalIgnoreCase) ||
             server.RegistryUrl.Contains(cleanQuery, StringComparison.OrdinalIgnoreCase)
         ).ToList();
-            
+
         var totalCount = allLocal.Count;
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
         if (totalPages < 1) totalPages = 1;
-            
+
         var serversList = allLocal.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
         return await Task.FromResult(new McpSearchResponse(serversList, page, totalPages, totalCount)).ConfigureAwait(false);
@@ -699,7 +699,7 @@ function decodeXml(value) {
         foreach (var arg in server.Args)
         {
             if (string.IsNullOrWhiteSpace(arg)) continue;
-            
+
             if (arg.StartsWith("https://server.smithery.ai/", StringComparison.OrdinalIgnoreCase))
             {
                 package = arg["https://server.smithery.ai/".Length..];
@@ -736,15 +736,15 @@ function decodeXml(value) {
         }
 
         var normalized = rawKey.ToLowerInvariant();
-        
+
         if (normalized.StartsWith("mcp-server-", StringComparison.Ordinal)) normalized = normalized["mcp-server-".Length..];
         if (normalized.StartsWith("mcp-", StringComparison.Ordinal)) normalized = normalized["mcp-".Length..];
         if (normalized.StartsWith("server-", StringComparison.Ordinal)) normalized = normalized["server-".Length..];
-        
+
         if (normalized.EndsWith("-mcp-server", StringComparison.Ordinal)) normalized = normalized[..^"-mcp-server".Length];
         if (normalized.EndsWith("-mcp", StringComparison.Ordinal)) normalized = normalized[..^"-mcp".Length];
         if (normalized.EndsWith("-server", StringComparison.Ordinal)) normalized = normalized[..^"-server".Length];
-        
+
         normalized = normalized
             .Replace("headless browser", string.Empty, StringComparison.Ordinal)
             .Replace("mcp server", string.Empty, StringComparison.Ordinal)
@@ -962,8 +962,8 @@ function decodeXml(value) {
 
     private static bool PassesSmitheryQualityGate(JsonElement server)
     {
-        return GetBool(server, "isDeployed") || 
-               GetBool(server, "remote") || 
+        return GetBool(server, "isDeployed") ||
+               GetBool(server, "remote") ||
                !string.IsNullOrWhiteSpace(GetString(server, "qualifiedName")) ||
                (server.TryGetProperty("packages", out var packages) && packages.ValueKind == JsonValueKind.Array && packages.GetArrayLength() > 0);
     }
@@ -977,7 +977,7 @@ function decodeXml(value) {
             {
                 return ("remote", new[] { $"https://server.smithery.ai/{qualifiedName.TrimStart('/')}" });
             }
-            
+
             var name = GetString(server, "qualifiedName") ?? GetString(server, "name");
             if (!string.IsNullOrWhiteSpace(name))
             {

@@ -294,7 +294,7 @@ internal sealed class EncryptedStore
         {
             using var connection = Open();
             using var transaction = connection.BeginTransaction();
-            
+
             string? createdAt = null;
             using (var cmd = connection.CreateCommand())
             {
@@ -315,7 +315,7 @@ internal sealed class EncryptedStore
                     cmd.ExecuteNonQuery();
                 }
             }
-            
+
             transaction.Commit();
         }
     }
@@ -555,9 +555,9 @@ internal sealed class EncryptedStore
                     return parsed;
                 }
             }
-            catch (Exception ex) 
-            { 
-                System.Diagnostics.Debug.WriteLine($"Failed to parse telegram settings: {ex}"); 
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to parse telegram settings: {ex}");
             }
         }
 
@@ -580,9 +580,9 @@ internal sealed class EncryptedStore
                     return parsed;
                 }
             }
-            catch (Exception ex) 
-            { 
-                System.Diagnostics.Debug.WriteLine($"Failed to parse whatsapp settings: {ex}"); 
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to parse whatsapp settings: {ex}");
             }
         }
 
@@ -678,7 +678,7 @@ internal sealed class EncryptedStore
 
             return (Unprotect(reader.GetString(0)), Unprotect(reader.GetString(1)));
         }
-     }
+    }
 
     private SqliteConnection OpenDaemonDb()
     {

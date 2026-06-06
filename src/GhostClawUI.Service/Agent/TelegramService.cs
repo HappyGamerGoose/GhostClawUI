@@ -75,7 +75,7 @@ internal sealed class TelegramService : BackgroundService
                     foreach (var update in resultEl.EnumerateArray())
                     {
                         lastUpdateId = update.GetProperty("update_id").GetInt64();
-                        
+
                         if (update.TryGetProperty("message", out var msgEl))
                         {
                             await HandleTelegramMessageAsync(msgEl, settings, stoppingToken).ConfigureAwait(false);
@@ -275,7 +275,7 @@ internal sealed class TelegramService : BackgroundService
                 var fileId = voiceEl.GetProperty("file_id").GetString();
                 var mimeType = voiceEl.TryGetProperty("mime_type", out var mimeEl) ? mimeEl.GetString() : "audio/ogg";
                 var size = voiceEl.TryGetProperty("file_size", out var sizeEl) ? sizeEl.GetInt64() : 0;
-                
+
                 if (size > 20 * 1024 * 1024)
                 {
                     await SendTelegramMessageAsync(chatId, $"⚠️ Voice note ignored: exceeds 20MB Telegram bot limit.", settings.BotToken, cancellationToken).ConfigureAwait(false);
@@ -292,7 +292,7 @@ internal sealed class TelegramService : BackgroundService
                 var fileName = audioEl.TryGetProperty("file_name", out var fnEl) ? fnEl.GetString() : $"telegram_audio_{Guid.NewGuid().ToString("N")[..8]}.mp3";
                 var mimeType = audioEl.TryGetProperty("mime_type", out var mimeEl) ? mimeEl.GetString() : "audio/mpeg";
                 var size = audioEl.TryGetProperty("file_size", out var sizeEl) ? sizeEl.GetInt64() : 0;
-                
+
                 if (size > 20 * 1024 * 1024)
                 {
                     await SendTelegramMessageAsync(chatId, $"⚠️ Audio file ignored: exceeds 20MB Telegram bot limit.", settings.BotToken, cancellationToken).ConfigureAwait(false);
@@ -311,7 +311,7 @@ internal sealed class TelegramService : BackgroundService
                 var fileName = videoEl.TryGetProperty("file_name", out var fnEl) ? fnEl.GetString() : $"telegram_video_{Guid.NewGuid().ToString("N")[..8]}.mp4";
                 var mimeType = videoEl.TryGetProperty("mime_type", out var mimeEl) ? mimeEl.GetString() : "video/mp4";
                 var size = videoEl.TryGetProperty("file_size", out var sizeEl) ? sizeEl.GetInt64() : 0;
-                
+
                 if (size > 20 * 1024 * 1024)
                 {
                     await SendTelegramMessageAsync(chatId, $"⚠️ Video ignored: exceeds 20MB Telegram bot limit.", settings.BotToken, cancellationToken).ConfigureAwait(false);
@@ -475,7 +475,7 @@ internal sealed class TelegramService : BackgroundService
         {
             var url = $"https://api.telegram.org/bot{token}/sendMessage";
             int chunkSize = 4000;
-            
+
             var htmlText = ConvertMarkdownToHtml(text);
             var chunks = ChunkHtmlSafely(htmlText, chunkSize);
 
@@ -490,7 +490,7 @@ internal sealed class TelegramService : BackgroundService
 
                 using var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
                 var response = await _httpClient.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     // Retry without Markdown in case of unclosed syntax errors
@@ -512,7 +512,7 @@ internal sealed class TelegramService : BackgroundService
                         lastMessageId = msgIdEl.GetInt64();
                     }
                 }
-                
+
                 response.Dispose();
             }
         }
@@ -613,7 +613,7 @@ internal sealed class TelegramService : BackgroundService
     private static string ConvertMarkdownToHtml(string markdown)
     {
         if (string.IsNullOrEmpty(markdown)) return "";
-        
+
         var html = markdown
             .Replace("&", "&amp;")
             .Replace("<", "&lt;")

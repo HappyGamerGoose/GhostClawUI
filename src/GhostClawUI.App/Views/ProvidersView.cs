@@ -128,8 +128,8 @@ internal sealed class ProvidersView : UserControl
         form.Children.Add(modelScroll);
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        buttons.Children.Add(UiKit.Button("Fetch", Symbol.Sync, async (_, _) => await ValidateAsync()));
-        buttons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveAsync()));
+        buttons.Children.Add(UiKit.Button("Fetch", Symbol.Sync, async (_, _) => await ValidateAsync().ConfigureAwait(false)));
+        buttons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveAsync().ConfigureAwait(false)));
         buttons.Children.Add(UiKit.Button("New", Symbol.Add, (_, _) => ClearForm()));
         form.Children.Add(buttons);
 
@@ -177,7 +177,7 @@ internal sealed class ProvidersView : UserControl
         {
             _loadingDefaults = true;
 
-            var providers = await _pipe.RequestAsync<IReadOnlyList<ProviderProfile>>("providers.list") ?? Array.Empty<ProviderProfile>();
+            var providers = await _pipe.RequestAsync<IReadOnlyList<ProviderProfile>>("providers.list").ConfigureAwait(false) ?? Array.Empty<ProviderProfile>();
             _providersList = providers;
 
             _cards.Children.Clear();
@@ -190,7 +190,7 @@ internal sealed class ProvidersView : UserControl
             _globalDefaultProvider.ItemsSource = providers;
             _globalDefaultProvider.DisplayMemberPath = nameof(ProviderProfile.Name);
 
-            var settings = await _pipe.RequestAsync<AppSettings>("settings.get");
+            var settings = await _pipe.RequestAsync<AppSettings>("settings.get").ConfigureAwait(false);
             if (settings != null)
             {
                 var defaultProv = providers.FirstOrDefault(p => p.Id == settings.DefaultProviderId);
@@ -198,7 +198,7 @@ internal sealed class ProvidersView : UserControl
                 {
                     _globalDefaultProvider.SelectedItem = defaultProv;
                     _globalDefaultModel.ItemsSource = defaultProv.Models;
-                    
+
                     var defaultModel = defaultProv.Models.FirstOrDefault(m => m == settings.DefaultModelId);
                     if (defaultModel != null)
                     {
@@ -257,7 +257,7 @@ internal sealed class ProvidersView : UserControl
         if (_loadingDefaults) return;
         try
         {
-            var settings = await _pipe.RequestAsync<AppSettings>("settings.get");
+            var settings = await _pipe.RequestAsync<AppSettings>("settings.get").ConfigureAwait(false);
             if (settings != null)
             {
                 var selectedProvider = _globalDefaultProvider.SelectedItem as ProviderProfile;
@@ -268,7 +268,7 @@ internal sealed class ProvidersView : UserControl
                     DefaultProviderId = selectedProvider?.Id,
                     DefaultModelId = selectedModel
                 };
-                await _pipe.RequestAsync<CommandResult>("settings.update", settings);
+                await _pipe.RequestAsync<CommandResult>("settings.update", settings).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -295,7 +295,7 @@ internal sealed class ProvidersView : UserControl
         header.Children.Add(title);
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        
+
         var heartbeatBtn = new Button
         {
             Content = new StackPanel
@@ -313,7 +313,7 @@ internal sealed class ProvidersView : UserControl
             CornerRadius = new CornerRadius(8)
         };
         AutomationProperties.SetName(heartbeatBtn, $"Test all models for {provider.Name}");
-        heartbeatBtn.Click += async (_, _) => await TestAllProviderModelsAsync(provider);
+        heartbeatBtn.Click += async (_, _) => await TestAllProviderModelsAsync(provider).ConfigureAwait(false);
         buttons.Children.Add(heartbeatBtn);
 
         buttons.Children.Add(UiKit.Button("Edit", Symbol.Edit, (_, _) => LoadIntoForm(provider)));
@@ -332,9 +332,9 @@ internal sealed class ProvidersView : UserControl
             var res = await dialog.ShowAsync();
             if (res == ContentDialogResult.Primary)
             {
-                await _pipe.RequestAsync<CommandResult>("providers.remove", new SimpleIdRequest(provider.Id));
+                await _pipe.RequestAsync<CommandResult>("providers.remove", new SimpleIdRequest(provider.Id)).ConfigureAwait(false);
                 _vault.DeleteProviderKey(provider.Id);
-                await LoadAsync();
+                await LoadAsync().ConfigureAwait(false);
                 _notice("Provider removed", provider.Name, InfoBarSeverity.Success);
             }
         });
@@ -354,8 +354,8 @@ internal sealed class ProvidersView : UserControl
             rows.Children.Add(ModelRow(
                 model,
                 statusKey,
-                async (_, _) => await TestSavedModelAsync(provider, model),
-                async (_, _) => await RemoveSavedModelAsync(provider, model)));
+                async (_, _) => await TestSavedModelAsync(provider, model).ConfigureAwait(false),
+                async (_, _) => await RemoveSavedModelAsync(provider, model).ConfigureAwait(false)));
         }
 
         panel.Children.Add(new ScrollViewer
@@ -383,7 +383,7 @@ internal sealed class ProvidersView : UserControl
         {
             var result = await _pipe.RequestAsync<ProviderValidationResult>(
                 "providers.validate",
-                new ProviderValidationRequest(_name.Text, _baseUrl.Text, _apiKey.Password, ParseModels(_models.Text)));
+                new ProviderValidationRequest(_name.Text, _baseUrl.Text, _apiKey.Password, ParseModels(_models.Text))).ConfigureAwait(false);
             _validatedModels = result?.Models ?? Array.Empty<string>();
             if (_validatedModels.Count > 0)
             {
@@ -416,14 +416,14 @@ internal sealed class ProvidersView : UserControl
             var defaultModel = _defaultModel.SelectedItem as string ?? models.FirstOrDefault();
             var provider = await _pipe.RequestAsync<ProviderProfile>(
                 "providers.upsert",
-                new ProviderUpsertRequest(_editingId, _name.Text, _baseUrl.Text, models, defaultModel, true));
+                new ProviderUpsertRequest(_editingId, _name.Text, _baseUrl.Text, models, defaultModel, true)).ConfigureAwait(false);
             if (provider is not null)
             {
                 _vault.SaveProviderKey(provider.Id, _apiKey.Password);
             }
 
             ClearForm();
-            await LoadAsync();
+            await LoadAsync().ConfigureAwait(false);
             _notice("Provider saved", "API key stored in Windows Credential Manager.", InfoBarSeverity.Success);
         }
         catch (Exception ex)
@@ -456,7 +456,7 @@ internal sealed class ProvidersView : UserControl
         _modelRows.Children.Clear();
         var keysToRemove = _modelStatusIndicators.Keys.Where(k => k.StartsWith("draft_")).ToList();
         foreach (var k in keysToRemove) _modelStatusIndicators.Remove(k);
-        
+
         if (models.Count == 0)
         {
             var empty = UiKit.Text("No models loaded.", 12);
@@ -472,7 +472,7 @@ internal sealed class ProvidersView : UserControl
             _modelRows.Children.Add(ModelRow(
                 model,
                 statusKey,
-                async (_, _) => await TestDraftModelAsync(model),
+                async (_, _) => await TestDraftModelAsync(model).ConfigureAwait(false),
                 (_, _) => RemoveDraftModel(model)));
         }
     }
@@ -497,7 +497,7 @@ internal sealed class ProvidersView : UserControl
         {
             var result = await _pipe.RequestAsync<CommandResult>(
                 "providers.testModel",
-                new ProviderModelTestRequest(string.IsNullOrWhiteSpace(_name.Text) ? "Draft provider" : _name.Text, _baseUrl.Text, _apiKey.Password, code));
+                new ProviderModelTestRequest(string.IsNullOrWhiteSpace(_name.Text) ? "Draft provider" : _name.Text, _baseUrl.Text, _apiKey.Password, code)).ConfigureAwait(false);
 
             var success = result?.Success == true;
             if (_modelStatusIndicators.TryGetValue(statusKey, out container))
@@ -531,7 +531,7 @@ internal sealed class ProvidersView : UserControl
         {
             var result = await _pipe.RequestAsync<CommandResult>(
                 "providers.testModel",
-                new ProviderModelTestRequest(provider.Name, provider.BaseUrl, _vault.ReadProviderKey(provider.Id), code));
+                new ProviderModelTestRequest(provider.Name, provider.BaseUrl, _vault.ReadProviderKey(provider.Id), code)).ConfigureAwait(false);
 
             var success = result?.Success == true;
             if (_modelStatusIndicators.TryGetValue(statusKey, out container))
@@ -573,7 +573,7 @@ internal sealed class ProvidersView : UserControl
                 {
                     var result = await _pipe.RequestAsync<CommandResult>(
                         "providers.testModel",
-                        new ProviderModelTestRequest(provider.Name, provider.BaseUrl, _vault.ReadProviderKey(provider.Id), code));
+                        new ProviderModelTestRequest(provider.Name, provider.BaseUrl, _vault.ReadProviderKey(provider.Id), code)).ConfigureAwait(false);
                     success = result?.Success == true;
                 }
                 catch
@@ -591,7 +591,7 @@ internal sealed class ProvidersView : UserControl
             }));
         }
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
         _notice("Testing complete", $"Concurrently tested all models for {provider.Name}.", InfoBarSeverity.Success);
     }
 
@@ -609,8 +609,8 @@ internal sealed class ProvidersView : UserControl
             : provider.DefaultModel;
         await _pipe.RequestAsync<ProviderProfile>(
             "providers.upsert",
-            new ProviderUpsertRequest(provider.Id, provider.Name, provider.BaseUrl, remaining, defaultModel, provider.IsEnabled));
-        await LoadAsync();
+            new ProviderUpsertRequest(provider.Id, provider.Name, provider.BaseUrl, remaining, defaultModel, provider.IsEnabled)).ConfigureAwait(false);
+        await LoadAsync().ConfigureAwait(false);
         _notice("Model removed", model, InfoBarSeverity.Success);
     }
 

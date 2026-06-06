@@ -21,7 +21,7 @@ internal sealed class PipeClient
 
     static PipeClient()
     {
-        _loggerFactory = LoggerFactory.Create(builder => 
+        _loggerFactory = LoggerFactory.Create(builder =>
         {
             builder.AddDebug();
         });
@@ -35,13 +35,13 @@ internal sealed class PipeClient
             var gateway = new ProviderGateway(httpClient);
             var mcpCatalog = new McpCatalog(store, httpClient, paths);
             var mcpToolRunner = new McpToolRunner(paths);
-            
+
             var agentRunnerLogger = _loggerFactory.CreateLogger<GhostClawAgentRunner>();
             var supervisorLogger = _loggerFactory.CreateLogger<GhostClawSupervisor>();
-            
+
             var agentRunner = new GhostClawAgentRunner(paths, mcpCatalog, agentRunnerLogger);
             var supervisor = new GhostClawSupervisor(paths, mcpCatalog, supervisorLogger);
-            
+
             try
             {
                 supervisor.ProvisionRuntime();
@@ -78,11 +78,11 @@ internal sealed class PipeClient
 
     public async Task<T?> RequestAsync<T>(string command, object? payload = null, CancellationToken cancellationToken = default)
     {
-        await _initTask;
+        await _initTask.ConfigureAwait(false);
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var payloadNode = payload is null ? null : JsonSerializer.SerializeToNode(payload, PipeJson.Options);
         var payloadSize = payloadNode?.ToJsonString(PipeJson.Options).Length ?? 0;
-        
+
         _logger.LogInformation("[IPC] RequestAsync started for command: {Command}. Payload length: {PayloadSize}", command, payloadSize);
 
         var requestEnvelope = new PipeEnvelope(
@@ -93,7 +93,7 @@ internal sealed class PipeClient
             null,
             DateTimeOffset.UtcNow);
 
-        var responseEnvelope = await _router!.HandleAsync(requestEnvelope, cancellationToken);
+        var responseEnvelope = await _router!.HandleAsync(requestEnvelope, cancellationToken).ConfigureAwait(false);
         sw.Stop();
 
         var responseSize = responseEnvelope.Payload?.ToJsonString(PipeJson.Options).Length ?? 0;

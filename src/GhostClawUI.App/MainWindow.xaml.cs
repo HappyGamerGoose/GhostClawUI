@@ -111,10 +111,10 @@ internal sealed partial class MainWindow : Window, IDisposable
                 Directory.CreateDirectory(logDir);
                 var debugLog = new StringBuilder();
                 debugLog.AppendLine($"Launcher started at {DateTimeOffset.UtcNow}");
-                
+
                 var processes = System.Diagnostics.Process.GetProcessesByName("GhostClawUI.Service");
                 debugLog.AppendLine($"GetProcessesByName('GhostClawUI.Service') count: {processes.Length}");
-                
+
                 if (processes.Length == 0)
                 {
                     var baseDir = AppContext.BaseDirectory;
@@ -124,10 +124,10 @@ internal sealed partial class MainWindow : Window, IDisposable
                         serviceExe = Path.Combine(baseDir, "Service", "GhostClawUI.Service.exe");
                     }
                     debugLog.AppendLine($"Service exe target path: {serviceExe}");
-                    
+
                     var exists = File.Exists(serviceExe);
                     debugLog.AppendLine($"Service exe exists: {exists}");
-                    
+
                     if (exists)
                     {
                         var psi = new System.Diagnostics.ProcessStartInfo
@@ -153,7 +153,7 @@ internal sealed partial class MainWindow : Window, IDisposable
                     // Ignore nested logging errors
                 }
             }
-        });
+        }).ConfigureAwait(false);
     }
 
     private async Task InitializeAsync()
@@ -161,14 +161,14 @@ internal sealed partial class MainWindow : Window, IDisposable
         // Go directly to a fresh Chat on startup instead of the onboarding screen immediately
         ShowPage("Chat");
 
-        await EnsureServiceRunningAsync();
-        await LoadSettingsAsync();
-        await RefreshStatusAsync();
-        await RefreshConversationsAsync();
+        await EnsureServiceRunningAsync().ConfigureAwait(false);
+        await LoadSettingsAsync().ConfigureAwait(false);
+        await RefreshStatusAsync().ConfigureAwait(false);
+        await RefreshConversationsAsync().ConfigureAwait(false);
 
         _statusTimer = DispatcherQueue.CreateTimer();
         _statusTimer.Interval = TimeSpan.FromSeconds(6);
-        _statusTimerHandler = async (_, _) => await RefreshStatusAsync();
+        _statusTimerHandler = async (_, _) => await RefreshStatusAsync().ConfigureAwait(false);
         _statusTimer.Tick += _statusTimerHandler;
         _statusTimer.Start();
     }
@@ -271,7 +271,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         search.PlaceholderForeground = UiKit.SidebarMutedBrush;
         search.BorderBrush = UiKit.SidebarBorderBrush;
         search.Margin = new Thickness(0, 8, 0, 6);
-        search.TextChanged += async (_, _) => await RefreshConversationsAsync(search.Text);
+        search.TextChanged += async (_, _) => await RefreshConversationsAsync(search.Text).ConfigureAwait(false);
         conversations.Children.Add(search);
 
         sidebarPanel.Children.Add(UiKit.PrimaryButton("New Chat", Symbol.Add, (_, _) =>
@@ -371,10 +371,15 @@ internal sealed partial class MainWindow : Window, IDisposable
             Child = new Image
             {
                 Source = new BitmapImage(new Uri("ms-appx:///Assets/GhostClawUI.Icon.png")),
-                Width = 24, Height = 24, Stretch = Stretch.Uniform,
-                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
+                Width = 24,
+                Height = 24,
+                Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
             },
-            Width = 40, Height = 40, CornerRadius = new CornerRadius(8),
+            Width = 40,
+            Height = 40,
+            CornerRadius = new CornerRadius(8),
             Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0)),
             Margin = new Thickness(0, 0, 0, 8)
         };
@@ -426,7 +431,7 @@ internal sealed partial class MainWindow : Window, IDisposable
             var isDark = RootHost.ActualTheme == ElementTheme.Dark;
             icon.Foreground = isDark ? new SolidColorBrush(Microsoft.UI.Colors.White) : UiKit.AccentBrush;
         };
-        border.PointerExited  += (s, _) =>
+        border.PointerExited += (s, _) =>
         {
             if (s is Border b)
             {
@@ -466,11 +471,11 @@ internal sealed partial class MainWindow : Window, IDisposable
             storyboard.Children.Add(animation);
             Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(animation, _sidebarBorder);
             Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(animation, "Width");
-            
+
             _sidebarBorder.Padding = _sidebarExpanded
                 ? new Thickness(18, 18, 18, 18)
                 : new Thickness(6, 18, 6, 18);
-                
+
             storyboard.Begin();
         }
 
@@ -613,7 +618,7 @@ internal sealed partial class MainWindow : Window, IDisposable
             _ => new ChatView(_pipe, _vault, () => _settings, Hwnd, _currentConversationId, async id =>
             {
                 _currentConversationId = id;
-                await RefreshConversationsAsync();
+                await RefreshConversationsAsync().ConfigureAwait(false);
             }, ShowNotice)
         };
     }
@@ -661,7 +666,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     {
         try
         {
-            _settings = await _pipe.RequestAsync<AppSettings>("settings.get") ?? _settings;
+            _settings = await _pipe.RequestAsync<AppSettings>("settings.get").ConfigureAwait(false) ?? _settings;
             ApplyAppearance(_settings.Appearance);
         }
         catch
@@ -674,7 +679,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     {
         var accentColor = UiKit.BrushFromHex(appearance.AccentColor).Color;
         UiKit.AccentBrush.Color = accentColor;
-        
+
         // Dynamic overrides for WinUI system accent color resources
         OverrideSystemAccentColor(accentColor);
 
@@ -700,7 +705,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         resources["SystemAccentColorDark3"] = color;
         resources["SystemAccentColorBrush"] = new SolidColorBrush(color);
         resources["SystemControlHighlightAccentBrush"] = new SolidColorBrush(color);
-        
+
         if (resources.ThemeDictionaries != null)
         {
             foreach (var dictKey in resources.ThemeDictionaries.Keys)
@@ -733,7 +738,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     {
         try
         {
-            _lastHealth = await _pipe.RequestAsync<ServiceHealthReport>("health.check");
+            _lastHealth = await _pipe.RequestAsync<ServiceHealthReport>("health.check").ConfigureAwait(false);
             var status = _lastHealth?.Status;
             _statusText.Text = status is null ? "Service unavailable" : BuildStatusText(_lastHealth);
             _settingsDot.Background = _lastHealth is { StoreWritable: true, PayloadPresent: true }
@@ -773,7 +778,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     {
         try
         {
-            var conversations = await _pipe.RequestAsync<IReadOnlyList<ConversationSummary>>("conversations.list", new SimpleTextRequest(query ?? string.Empty)) ?? Array.Empty<ConversationSummary>();
+            var conversations = await _pipe.RequestAsync<IReadOnlyList<ConversationSummary>>("conversations.list", new SimpleTextRequest(query ?? string.Empty)).ConfigureAwait(false) ?? Array.Empty<ConversationSummary>();
             _conversationList.ItemsSource = null;
             _conversationList.DisplayMemberPath = null;
             _conversationList.Items.Clear();
@@ -861,12 +866,12 @@ internal sealed partial class MainWindow : Window, IDisposable
         {
             var newTitle = renameInput.Text.Trim();
             if (string.IsNullOrEmpty(newTitle)) return;
-            
+
             try
             {
-                await _pipe.RequestAsync<CommandResult>("conversations.rename", new RenameConversationRequest(summary.Id, newTitle));
+                await _pipe.RequestAsync<CommandResult>("conversations.rename", new RenameConversationRequest(summary.Id, newTitle)).ConfigureAwait(false);
                 flyout.Hide();
-                await RefreshConversationsAsync();
+                await RefreshConversationsAsync().ConfigureAwait(false);
                 ShowNotice("Conversation renamed", newTitle, InfoBarSeverity.Success);
             }
             catch (Exception ex)
@@ -898,14 +903,14 @@ internal sealed partial class MainWindow : Window, IDisposable
         {
             try
             {
-                await _pipe.RequestAsync<CommandResult>("conversations.delete", new SimpleIdRequest(summary.Id));
+                await _pipe.RequestAsync<CommandResult>("conversations.delete", new SimpleIdRequest(summary.Id)).ConfigureAwait(false);
                 if (_currentConversationId == summary.Id)
                 {
                     _currentConversationId = null;
                     ShowPage("Chat");
                 }
 
-                await RefreshConversationsAsync();
+                await RefreshConversationsAsync().ConfigureAwait(false);
                 ShowNotice("Conversation deleted", summary.Title, InfoBarSeverity.Success);
             }
             catch (Exception ex)
@@ -928,7 +933,7 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         // Show rename and delete buttons only when the row is hovered
         item.PointerEntered += (_, _) => { rename.Visibility = Visibility.Visible; delete.Visibility = Visibility.Visible; };
-        item.PointerExited  += (_, _) => { rename.Visibility = Visibility.Collapsed; delete.Visibility = Visibility.Collapsed; };
+        item.PointerExited += (_, _) => { rename.Visibility = Visibility.Collapsed; delete.Visibility = Visibility.Collapsed; };
 
         var contextMenu = new MenuFlyout();
         var exportItem = new MenuFlyoutItem
@@ -940,7 +945,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         {
             try
             {
-                var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(summary.Id));
+                var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(summary.Id)).ConfigureAwait(false);
                 if (conversation is null || conversation.Messages.Count == 0)
                 {
                     ShowNotice("Export Failed", "Could not retrieve messages for this conversation.", InfoBarSeverity.Error);
@@ -989,7 +994,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GhostClawUI Exports");
         Directory.CreateDirectory(folder);
         var path = Path.Combine(folder, export.FileName);
-        await File.WriteAllTextAsync(path, export.Content);
+        await File.WriteAllTextAsync(path, export.Content).ConfigureAwait(false);
         ShowNotice("Export saved", path, InfoBarSeverity.Success);
     }
 
@@ -1005,7 +1010,7 @@ internal sealed partial class MainWindow : Window, IDisposable
             ShowPage("Chat");
             if (_content.Content is ChatView chat)
             {
-                await chat.SendQuickPromptAsync(text);
+                await chat.SendQuickPromptAsync(text).ConfigureAwait(false);
             }
         });
         quick.Activate();

@@ -36,7 +36,7 @@ internal sealed class SettingsView : UserControl
             _saveTimer.Stop();
             try
             {
-                await SaveAsync(showNotice: false);
+                await SaveAsync(showNotice: false).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -44,7 +44,7 @@ internal sealed class SettingsView : UserControl
             }
         };
         _saveTimer.Tick += _saveTimerHandler;
-        
+
         Unloaded += (s, e) =>
         {
             _saveTimer.Stop();
@@ -99,10 +99,10 @@ internal sealed class SettingsView : UserControl
         {
             try
             {
-                var result = await _pipe.RequestAsync<ExportResult>("data.export");
+                var result = await _pipe.RequestAsync<ExportResult>("data.export").ConfigureAwait(false);
                 if (result is not null)
                 {
-                    await _saveExport(result);
+                    await _saveExport(result).ConfigureAwait(false);
                 }
                 else
                 {
@@ -130,7 +130,7 @@ internal sealed class SettingsView : UserControl
             {
                 try
                 {
-                    var purgeRes = await _pipe.RequestAsync<CommandResult>("data.purge");
+                    var purgeRes = await _pipe.RequestAsync<CommandResult>("data.purge").ConfigureAwait(false);
                     if (purgeRes?.Success == true)
                     {
                         _notice("Data purged", "All database tables cleared.", InfoBarSeverity.Success);
@@ -202,7 +202,7 @@ internal sealed class SettingsView : UserControl
             SilentToolConfirmations = _silent.IsOn,
             AutoUpdateEnabled = _updates.IsOn
         };
-        await _pipe.RequestAsync<CommandResult>("settings.update", _settings);
+        await _pipe.RequestAsync<CommandResult>("settings.update", _settings).ConfigureAwait(false);
         if (showNotice)
         {
             _notice("Settings saved", "Configuration updated.", InfoBarSeverity.Success);

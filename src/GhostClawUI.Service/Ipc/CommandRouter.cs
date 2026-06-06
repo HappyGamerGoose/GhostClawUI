@@ -210,20 +210,20 @@ internal sealed class CommandRouter
                             var buffer = new char[200000];
                             int read = await reader.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
                             var html = new string(buffer, 0, read);
-                            
+
                             var plainText = System.Text.RegularExpressions.Regex.Replace(html, "<style.*?>[\\s\\S]*?</style>", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                             plainText = System.Text.RegularExpressions.Regex.Replace(plainText, "<script.*?>[\\s\\S]*?</script>", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                             plainText = System.Text.RegularExpressions.Regex.Replace(plainText, "<[^>]+>", " ");
                             plainText = System.Text.RegularExpressions.Regex.Replace(plainText, @"\s+", " ").Trim();
                             if (plainText.Length > 20000) plainText = plainText.Substring(0, 20000) + "...";
-                            
+
                             var uri = new Uri(url);
                             processedAttachments.Add(new ChatAttachment(
-                                uri.Host, 
-                                url, 
-                                "text/html", 
-                                plainText.Length, 
-                                $"[Live Web Content from {url}]\n" + plainText, 
+                                uri.Host,
+                                url,
+                                "text/html",
+                                plainText.Length,
+                                $"[Live Web Content from {url}]\n" + plainText,
                                 null));
                         }
                     }
@@ -241,9 +241,9 @@ internal sealed class CommandRouter
 
         var provider = _store.GetProvider(chatRequest.ProviderId);
         var conversation = _store.GetOrCreateConversation(chatRequest.ConversationId);
-        
+
         var settings = _store.GetSettings();
-        if (attachments.Count > 0 && 
+        if (attachments.Count > 0 &&
             attachments.Any(a => a.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) &&
             !string.IsNullOrWhiteSpace(settings.VisionTranslatorProviderId) &&
             !string.IsNullOrWhiteSpace(settings.VisionTranslatorModel) &&
@@ -363,10 +363,10 @@ internal sealed class CommandRouter
             try
             {
                 agentResult = await _ghostClawAgentRunner.TryRunAsync(
-                    provider, 
-                    apiKey, 
-                    chatRequest.Model, 
-                    providerContent, 
+                    provider,
+                    apiKey,
+                    chatRequest.Model,
+                    providerContent,
                     conversationId,
                     traceCard =>
                     {
@@ -470,7 +470,7 @@ internal sealed class CommandRouter
 
                         var generatedfbAttachments = await AutoExecuteFileGeneratorsAsync(fbContent).ConfigureAwait(false);
                         generatedfbAttachments = ScanAndAttachMentionedFiles(fbContent, generatedfbAttachments);
-                        
+
                         JsonObject? fbMetadata = null;
                         if (generatedfbAttachments.Count > 0)
                         {
@@ -515,7 +515,7 @@ internal sealed class CommandRouter
             generatedAttachments = await AutoExecuteFileGeneratorsAsync(content).ConfigureAwait(false);
             generatedAttachments = ScanAndAttachMentionedFiles(content, generatedAttachments);
         }
-        
+
         JsonObject? assistantMetadata = null;
         if (generatedAttachments.Count > 0)
         {
@@ -628,7 +628,7 @@ internal sealed class CommandRouter
         builder.AppendLine("tool_output_policy: Never show raw tool-call JSON/XML/function arguments. Summarize tool outcomes naturally.");
         builder.AppendLine("file_generation_policy: You have native capability to generate and attach files (PowerPoint, Word, Excel, PDF, images, etc.). To generate a file, you MUST write the complete, self-contained Python script to create that file, and wrap it inside a ```python ... ``` code block in your response. The host platform will automatically execute your code block in the background, attach the created file to your chat bubble, and present a download button. NEVER ask the user for permission to generate a file. If your task involves creating a file, write the complete python code block immediately! NEVER mention 'Code Sandbox' or say you cannot produce artifacts. CRITICAL RULES: (1) NEVER use absolute file paths (like /mnt/data/ or C:/...). ALWAYS save files to the current directory (e.g. filename.pptx). (2) Never include un-commented decorative headers, text lines, or separators (such as '── Colour palette ──') inside python blocks. Every line in a ```python block must be valid, executable Python syntax. Comment out decorative dividers using '#'. (3) For ReportLab alignment: import standard alignment constants with underscores (e.g. TA_CENTER, TA_JUSTIFY) from 'reportlab.lib.enums'. Never use TACENTER or TAJUSTIFY. (4) For python-pptx presentations: never use non-existent methods like '.fit_text()' or '.autofit()'. Use standard layout/sizing APIs.");
         builder.AppendLine("</ghostclaw_runtime_context>");
- 
+
         // Auto-inject matching skills context to guide file processing and generation quality
         var skillsContext = AppendRelevantSkillsContext(rawUserPrompt);
         if (!string.IsNullOrEmpty(skillsContext))
@@ -636,7 +636,7 @@ internal sealed class CommandRouter
             builder.AppendLine();
             builder.AppendLine(skillsContext);
         }
- 
+
         // Add a high-visibility, recency-biased mandate at the very end of the prompt to prevent text-only summaries and path hallucinations
         var lowerRawPrompt = rawUserPrompt.ToLowerInvariant();
         bool isRequestingFileGeneration = IsFileGenerationRequest(rawUserPrompt) &&
@@ -716,7 +716,7 @@ internal sealed class CommandRouter
             try
             {
                 var existing = _store.ListMemory();
-                var existingStr = existing.Count == 0 
+                var existingStr = existing.Count == 0
                     ? "None"
                     : string.Join("\n", existing.Select(f => $"- {f.Summary}: {f.Content}"));
 
@@ -1072,7 +1072,7 @@ Message to analyze:
     {
         var isRunning = _runningTraces.ContainsKey(conversationId);
         var traces = new List<AgentTraceCard>();
-        
+
         if (_runningTraces.TryGetValue(conversationId, out var list))
         {
             lock (list)
@@ -1080,7 +1080,7 @@ Message to analyze:
                 traces = list.ToList();
             }
         }
-        
+
         return new ActiveTracesResponse(isRunning, traces);
     }
 
@@ -1276,7 +1276,7 @@ Message to analyze:
                 {
                     Directory.CreateDirectory(groupDir);
                 }
-                catch {}
+                catch { }
 
                 var beforeFiles = new HashSet<string?>(StringComparer.OrdinalIgnoreCase);
                 try
@@ -1286,7 +1286,7 @@ Message to analyze:
                         beforeFiles = Directory.GetFiles(groupDir).Select(Path.GetFileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
                     }
                 }
-                catch {}
+                catch { }
 
                 try
                 {
@@ -1427,7 +1427,7 @@ Message to analyze:
 
                                 var outTask = ReadBoundedAsync(process.StandardOutput);
                                 var errTask = ReadBoundedAsync(process.StandardError);
-                                
+
                                 using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
                                 try
                                 {
@@ -1440,10 +1440,10 @@ Message to analyze:
                                     errorOutput = "Exit Code: -1\n\nStandard Error:\nProcess timed out after 2 minutes.\n\nStandard Output:\n";
                                     return true;
                                 }
-                                
+
                                 var outText = await outTask.ConfigureAwait(false);
                                 var errText = await errTask.ConfigureAwait(false);
-                                
+
                                 exitCode = process.ExitCode;
                                 errorOutput = $"Exit Code: {exitCode}\n\nStandard Error:\n{errText}\n\nStandard Output:\n{outText}";
                                 return true;
@@ -1492,7 +1492,7 @@ Message to analyze:
                     }
                     finally
                     {
-                        try { File.Delete(tempScript); } catch {}
+                        try { File.Delete(tempScript); } catch { }
                     }
                 }
                 catch (Exception ex)
@@ -1502,7 +1502,7 @@ Message to analyze:
                         var errorPath = Path.Combine(groupDir, $"Execution_Error_{Guid.NewGuid().ToString("N")[..4]}.txt");
                         await File.WriteAllTextAsync(errorPath, $"Background process manager encountered an exception during execution setup:\n{ex}").ConfigureAwait(false);
                     }
-                    catch {}
+                    catch { }
                 }
 
                 // Scans for newly generated files after execution (always executes, even on error)
@@ -1567,7 +1567,7 @@ Message to analyze:
         var lower = prompt.ToLowerInvariant();
         var creationVerbs = new[]
         {
-            "generate", "create", "build", "make", "write", "output", "produce", "render", "export", 
+            "generate", "create", "build", "make", "write", "output", "produce", "render", "export",
             "draw", "draft", "compile", "design", "convert", "save", "new "
         };
         return creationVerbs.Any(lower.Contains);
@@ -1578,7 +1578,7 @@ Message to analyze:
         var lower = userPrompt.ToLowerInvariant();
         var matchingSkills = new List<string>();
         bool isGeneration = IsFileGenerationRequest(lower);
-        
+
         if (lower.Contains("pptx") || lower.Contains("powerpoint") || lower.Contains("presentation") || lower.Contains("slides"))
         {
             if (isGeneration)
@@ -1667,7 +1667,7 @@ Message to analyze:
                 }
             }
         }
-        
+
         return skillContextBuilder.ToString();
     }
 
@@ -1749,8 +1749,8 @@ Message to analyze:
             var contextBuilder = new StringBuilder();
 
             // 1. Directory Listing Detection
-            bool wantsDirectory = lower.Contains("list files") || lower.Contains("show files") || 
-                                  lower.Contains("files in this") || lower.Contains("files in the") || 
+            bool wantsDirectory = lower.Contains("list files") || lower.Contains("show files") ||
+                                  lower.Contains("files in this") || lower.Contains("files in the") ||
                                   lower.Contains("directory listing") || lower.Contains("list the folder") ||
                                   lower.Contains("show folder contents") || lower.Contains("show directory");
 
@@ -1804,7 +1804,7 @@ Message to analyze:
                     if (targetPath != null && File.Exists(targetPath))
                     {
                         var relative = Path.GetRelativePath(workspaceDir, targetPath);
-                        
+
                         string content;
                         using (var reader = new StreamReader(new FileStream(targetPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
                         {
@@ -1821,7 +1821,7 @@ Message to analyze:
                         contextBuilder.AppendLine($"=== FILESYSTEM FILE CONTENT: {relative} ===");
                         contextBuilder.AppendLine(content);
                         contextBuilder.AppendLine("=====================================================");
-                        
+
                         // Stop after reading one file to prevent prompt overflow
                         break;
                     }
@@ -1845,7 +1845,7 @@ Message to analyze:
     {
         var queue = new Queue<string>();
         queue.Enqueue(rootPath);
-        
+
         while (queue.Count > 0)
         {
             var dir = queue.Dequeue();
@@ -1853,7 +1853,7 @@ Message to analyze:
             {
                 var filePath = Path.Combine(dir, fileName);
                 if (File.Exists(filePath)) return filePath;
-                
+
                 foreach (var subDir in Directory.GetDirectories(dir))
                 {
                     var name = Path.GetFileName(subDir).ToLowerInvariant();

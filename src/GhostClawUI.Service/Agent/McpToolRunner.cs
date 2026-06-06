@@ -250,7 +250,7 @@ internal sealed class McpToolRunner
                     throw new InvalidOperationException("Invalid Content-Length header.");
                 }
                 int length = int.Parse(match.Groups[1].Value);
-                
+
                 // Read the empty separator line if it hasn't been consumed yet
                 // Standard stream next has "\r\n" which ReadLineAsync might not have consumed
                 // ReadLineAsync reads the Content-Length line. If the server sent Content-Length:\r\n\r\n

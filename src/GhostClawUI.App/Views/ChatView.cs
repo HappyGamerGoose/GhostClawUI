@@ -138,7 +138,7 @@ internal sealed class ChatView : UserControl, IDisposable
         _notice = notice;
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
-        
+
         _sendButton = new Button
         {
             Content = new FontIcon { Glyph = "\uE111", FontSize = 12, Foreground = new SolidColorBrush(Colors.White) },
@@ -152,7 +152,7 @@ internal sealed class ChatView : UserControl, IDisposable
             Foreground = new SolidColorBrush(Colors.White)
         };
         AutomationProperties.SetName(_sendButton, "Send message");
-        _sendButton.Click += async (_, _) => await SendAsync();
+        _sendButton.Click += async (_, _) => await SendAsync().ConfigureAwait(false);
 
         Content = Build();
         Unloaded += (s, e) => StopPollingActiveTraces();
@@ -162,7 +162,7 @@ internal sealed class ChatView : UserControl, IDisposable
     public async Task SendQuickPromptAsync(string text)
     {
         _composer.Text = text;
-        await SendAsync();
+        await SendAsync().ConfigureAwait(false);
     }
 
     private Grid Build()
@@ -233,7 +233,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 var files = items.OfType<StorageFile>().ToList();
                 if (files.Count > 0)
                 {
-                    await ProcessStorageFilesAsync(files);
+                    await ProcessStorageFilesAsync(files).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -290,7 +290,7 @@ internal sealed class ChatView : UserControl, IDisposable
         _composer.PlaceholderForeground = SecondaryTextBrush();
         _composer.PlaceholderText = "Ask anything...";
         _composer.VerticalAlignment = VerticalAlignment.Center;
-        
+
         _composer.Resources["TextControlBackground"] = new SolidColorBrush(Colors.Transparent);
         _composer.Resources["TextControlBackgroundPointerOver"] = new SolidColorBrush(Colors.Transparent);
         _composer.Resources["TextControlBackgroundFocused"] = new SolidColorBrush(Colors.Transparent);
@@ -299,7 +299,7 @@ internal sealed class ChatView : UserControl, IDisposable
         _composer.Resources["TextControlBorderBrushPointerOver"] = new SolidColorBrush(Colors.Transparent);
         _composer.Resources["TextControlBorderBrushFocused"] = new SolidColorBrush(Colors.Transparent);
         _composer.Resources["TextControlBorderBrushDisabled"] = new SolidColorBrush(Colors.Transparent);
-        
+
         _composer.TextChanged += (s, e) => UpdateSendButtonState();
         _composer.PreviewKeyDown += async (_, e) =>
         {
@@ -307,10 +307,10 @@ internal sealed class ChatView : UserControl, IDisposable
                 !Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
             {
                 e.Handled = true;
-                await SendAsync();
+                await SendAsync().ConfigureAwait(false);
             }
         };
-        
+
         _composer.GotFocus += (s, e) =>
         {
             if (_composerBorder != null)
@@ -345,7 +345,7 @@ internal sealed class ChatView : UserControl, IDisposable
 
         // Left Side Controls: Providers and Models dropdowns
         var leftPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
-        
+
         _providers.SelectionChanged += (_, _) => SyncModels();
         _providers.MinHeight = 32;
         _providers.Height = 32;
@@ -354,7 +354,7 @@ internal sealed class ChatView : UserControl, IDisposable
         _providers.Width = 140;
         _providers.BorderThickness = new Thickness(0);
         _providers.Background = new SolidColorBrush(Colors.Transparent);
-        
+
         _models.SelectionChanged += (s, e) => UpdateHeaderModelInfo();
         _models.MinHeight = 32;
         _models.Height = 32;
@@ -397,14 +397,14 @@ internal sealed class ChatView : UserControl, IDisposable
             Foreground = PrimaryTextBrush()
         };
         AutomationProperties.SetName(attachBtn, "Attach files");
-        attachBtn.Click += async (_, _) => await AttachFilesAsync();
-        
+        attachBtn.Click += async (_, _) => await AttachFilesAsync().ConfigureAwait(false);
+
         // Pointer visual feedback for attachBtn
         attachBtn.PointerEntered += (s, e) => { attachBtn.Background = IsDarkMode ? UiKit.BrushFromHex("#2C3540") : UiKit.BrushFromHex("#E5E7EB"); };
         attachBtn.PointerExited += (s, e) => { attachBtn.Background = ControlSurfaceBrush(); };
         attachBtn.PointerPressed += (s, e) => { attachBtn.Background = IsDarkMode ? UiKit.BrushFromHex("#1F2937") : UiKit.BrushFromHex("#D1D5DB"); };
         attachBtn.PointerReleased += (s, e) => { attachBtn.Background = IsDarkMode ? UiKit.BrushFromHex("#2C3540") : UiKit.BrushFromHex("#E5E7EB"); };
-        
+
         rightPanel.Children.Add(attachBtn);
 
         // Sleek circular Send button with Right arrow
@@ -417,9 +417,9 @@ internal sealed class ChatView : UserControl, IDisposable
         _sendButton.CornerRadius = new CornerRadius(16);
         _sendButton.Background = UiKit.AccentBrush;
         _sendButton.BorderBrush = UiKit.AccentBrush;
-        
+
         // Pointer visual feedback for send button
-        _sendButton.PointerEntered += (s, e) => 
+        _sendButton.PointerEntered += (s, e) =>
         {
             var isBusy = _sending.IsActive;
             if (isBusy)
@@ -432,8 +432,8 @@ internal sealed class ChatView : UserControl, IDisposable
                 _sendButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(220, color.R, color.G, color.B));
             }
         };
-        _sendButton.PointerExited += (s, e) => 
-        { 
+        _sendButton.PointerExited += (s, e) =>
+        {
             var isBusy = _sending.IsActive;
             if (isBusy)
             {
@@ -441,10 +441,10 @@ internal sealed class ChatView : UserControl, IDisposable
             }
             else
             {
-                _sendButton.Background = UiKit.AccentBrush; 
+                _sendButton.Background = UiKit.AccentBrush;
             }
         };
-        _sendButton.PointerPressed += (s, e) => 
+        _sendButton.PointerPressed += (s, e) =>
         {
             var isBusy = _sending.IsActive;
             if (isBusy)
@@ -457,7 +457,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 _sendButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(180, color.R, color.G, color.B));
             }
         };
-        _sendButton.PointerReleased += (s, e) => 
+        _sendButton.PointerReleased += (s, e) =>
         {
             var isBusy = _sending.IsActive;
             if (isBusy)
@@ -470,7 +470,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 _sendButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(220, color.R, color.G, color.B));
             }
         };
-        
+
         rightPanel.Children.Add(_sendButton);
 
         Grid.SetColumn(rightPanel, 1);
@@ -490,7 +490,7 @@ internal sealed class ChatView : UserControl, IDisposable
     {
         try
         {
-            _providerProfiles = await _pipe.RequestAsync<IReadOnlyList<ProviderProfile>>("providers.list") ?? Array.Empty<ProviderProfile>();
+            _providerProfiles = await _pipe.RequestAsync<IReadOnlyList<ProviderProfile>>("providers.list").ConfigureAwait(false) ?? Array.Empty<ProviderProfile>();
             _providers.ItemsSource = _providerProfiles;
             _providers.DisplayMemberPath = nameof(ProviderProfile.Name);
 
@@ -516,7 +516,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 return;
             }
 
-            var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId));
+            var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId)).ConfigureAwait(false);
             if (conversation is null)
             {
                 _headerTitle.Text = "New Conversation";
@@ -526,7 +526,7 @@ internal sealed class ChatView : UserControl, IDisposable
 
             _conversationId = conversation.Summary.Id;
             _headerTitle.Text = conversation.Summary.Title;
-            await _conversationChanged(conversation.Summary.Id);
+            await _conversationChanged(conversation.Summary.Id).ConfigureAwait(false);
             DrawMessages(conversation.Messages);
 
             var lastMessageWithModel = conversation.Messages
@@ -538,7 +538,7 @@ internal sealed class ChatView : UserControl, IDisposable
 
             try
             {
-                var active = await _pipe.RequestAsync<ActiveTracesResponse>("chat.activeTraces", new SimpleIdRequest(_conversationId));
+                var active = await _pipe.RequestAsync<ActiveTracesResponse>("chat.activeTraces", new SimpleIdRequest(_conversationId)).ConfigureAwait(false);
                 if (active != null && active.IsRunning)
                 {
                     StartPollingActiveTraces();
@@ -633,7 +633,7 @@ internal sealed class ChatView : UserControl, IDisposable
         if (provider != null)
         {
             _providers.SelectedItem = provider;
-            
+
             if (_models.Items.Count == 0)
             {
                 SyncModels();
@@ -680,7 +680,7 @@ internal sealed class ChatView : UserControl, IDisposable
     {
         _headerTitle.Text = "New Conversation";
         _messages.Children.Clear();
-        
+
         var panel = new StackPanel
         {
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -697,11 +697,11 @@ internal sealed class ChatView : UserControl, IDisposable
             Foreground = UiKit.AccentBrush,
             HorizontalAlignment = HorizontalAlignment.Center
         };
-        
+
         var headerText = UiKit.Text("How can I help you today?", 28, FontWeights.Bold);
         headerText.Foreground = PrimaryTextBrush();
         headerText.HorizontalAlignment = HorizontalAlignment.Center;
-        
+
         var subText = UiKit.Muted(string.IsNullOrWhiteSpace(title) || title.Contains("ready", StringComparison.OrdinalIgnoreCase) || title.Contains("GhostClaw", StringComparison.OrdinalIgnoreCase) ? "GhostClaw Desktop Intelligence" : title, 14);
         subText.HorizontalAlignment = HorizontalAlignment.Center;
         subText.TextAlignment = TextAlignment.Center;
@@ -709,7 +709,7 @@ internal sealed class ChatView : UserControl, IDisposable
         panel.Children.Add(logoIcon);
         panel.Children.Add(headerText);
         panel.Children.Add(subText);
-        
+
         _messages.Children.Add(panel);
     }
 
@@ -869,7 +869,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 string? lastUserId = null;
                 try
                 {
-                    var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId ?? string.Empty));
+                    var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId ?? string.Empty)).ConfigureAwait(false);
                     if (conversation is not null)
                     {
                         var lastUser = conversation.Messages.LastOrDefault(m => m.Role.Equals("user", StringComparison.OrdinalIgnoreCase));
@@ -889,13 +889,13 @@ internal sealed class ChatView : UserControl, IDisposable
                     try
                     {
                         // Roll back conversation from this user prompt (inclusive)
-                        await _pipe.RequestAsync<CommandResult>("conversations.deleteMessagesAfter", new DeleteMessagesAfterRequest(_conversationId ?? string.Empty, lastUserId));
-                        
+                        await _pipe.RequestAsync<CommandResult>("conversations.deleteMessagesAfter", new DeleteMessagesAfterRequest(_conversationId ?? string.Empty, lastUserId)).ConfigureAwait(false);
+
                         // Immediately reload in the UI to wipe off the old response!
-                        await LoadAsync();
-                        
+                        await LoadAsync().ConfigureAwait(false);
+
                         // Resubmit the prompt
-                        await SendQuickPromptAsync(lastUserPrompt);
+                        await SendQuickPromptAsync(lastUserPrompt).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -978,7 +978,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 string? lastUserId = null;
                 try
                 {
-                    var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId ?? string.Empty));
+                    var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId ?? string.Empty)).ConfigureAwait(false);
                     if (conversation is not null)
                     {
                         var lastUser = conversation.Messages.LastOrDefault(m => m.Role.Equals("user", StringComparison.OrdinalIgnoreCase));
@@ -998,13 +998,13 @@ internal sealed class ChatView : UserControl, IDisposable
                     try
                     {
                         // Roll back conversation from this user prompt (inclusive)
-                        await _pipe.RequestAsync<CommandResult>("conversations.deleteMessagesAfter", new DeleteMessagesAfterRequest(_conversationId ?? string.Empty, lastUserId));
-                        
+                        await _pipe.RequestAsync<CommandResult>("conversations.deleteMessagesAfter", new DeleteMessagesAfterRequest(_conversationId ?? string.Empty, lastUserId)).ConfigureAwait(false);
+
                         // Immediately reload in the UI to wipe off the old response!
-                        await LoadAsync();
-                        
+                        await LoadAsync().ConfigureAwait(false);
+
                         // Resubmit the prompt
-                        await SendQuickPromptAsync(lastUserPrompt);
+                        await SendQuickPromptAsync(lastUserPrompt).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -1097,71 +1097,71 @@ internal sealed class ChatView : UserControl, IDisposable
                     System.Text.RegularExpressions.RegexOptions.Compiled);
 
                 var matches = regex.Matches(messageContent);
-            var addedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var attachmentsToAdd = new List<ChatAttachment>();
+                var addedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var attachmentsToAdd = new List<ChatAttachment>();
 
-            foreach (System.Text.RegularExpressions.Match match in matches)
-            {
-                // Extract the path from the matched group
-                string potPath = string.Empty;
-                for (int i = 1; i <= 5; i++)
+                foreach (System.Text.RegularExpressions.Match match in matches)
                 {
-                    if (match.Groups[i].Success)
+                    // Extract the path from the matched group
+                    string potPath = string.Empty;
+                    for (int i = 1; i <= 5; i++)
                     {
-                        potPath = match.Groups[i].Value;
-                        break;
-                    }
-                }
-
-                if (string.IsNullOrWhiteSpace(potPath)) continue;
-
-                // Trim leading/trailing punctuation and markdown
-                potPath = potPath.Trim(' ', '\t', '\r', '\n', '.', ',', '!', '?', ':', '*', '(', ')', '[', ']', '{', '}');
-
-                string? resolvedPath = ResolveLocalFilePath(potPath);
-                if (resolvedPath != null && !addedPaths.Contains(resolvedPath))
-                {
-                    addedPaths.Add(resolvedPath);
-                    try
-                    {
-                        var fileInfo = new System.IO.FileInfo(resolvedPath);
-                        var name = fileInfo.Name;
-                        var ext = fileInfo.Extension.ToLowerInvariant();
-                        var contentType = ext switch
+                        if (match.Groups[i].Success)
                         {
-                            ".pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            ".pdf" => "application/vnd.openxmlformats-officedocument.pdf",
-                            ".png" => "image/png",
-                            ".jpg" => "image/jpeg",
-                            ".jpeg" => "image/jpeg",
-                            ".txt" => "text/plain",
-                            ".csv" => "text/csv",
-                            ".zip" => "application/zip",
-                            _ => "application/octet-stream"
-                        };
-
-                        attachmentsToAdd.Add(new ChatAttachment(name, resolvedPath, contentType, fileInfo.Length, null));
+                            potPath = match.Groups[i].Value;
+                            break;
+                        }
                     }
-                    catch
+
+                    if (string.IsNullOrWhiteSpace(potPath)) continue;
+
+                    // Trim leading/trailing punctuation and markdown
+                    potPath = potPath.Trim(' ', '\t', '\r', '\n', '.', ',', '!', '?', ':', '*', '(', ')', '[', ']', '{', '}');
+
+                    string? resolvedPath = ResolveLocalFilePath(potPath);
+                    if (resolvedPath != null && !addedPaths.Contains(resolvedPath))
                     {
-                        // Ignore errors building preview
+                        addedPaths.Add(resolvedPath);
+                        try
+                        {
+                            var fileInfo = new System.IO.FileInfo(resolvedPath);
+                            var name = fileInfo.Name;
+                            var ext = fileInfo.Extension.ToLowerInvariant();
+                            var contentType = ext switch
+                            {
+                                ".pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                ".pdf" => "application/vnd.openxmlformats-officedocument.pdf",
+                                ".png" => "image/png",
+                                ".jpg" => "image/jpeg",
+                                ".jpeg" => "image/jpeg",
+                                ".txt" => "text/plain",
+                                ".csv" => "text/csv",
+                                ".zip" => "application/zip",
+                                _ => "application/octet-stream"
+                            };
+
+                            attachmentsToAdd.Add(new ChatAttachment(name, resolvedPath, contentType, fileInfo.Length, null));
+                        }
+                        catch
+                        {
+                            // Ignore errors building preview
+                        }
                     }
                 }
-            }
 
-            if (attachmentsToAdd.Count > 0)
-            {
-                DispatcherQueue.TryEnqueue(() =>
+                if (attachmentsToAdd.Count > 0)
                 {
-                    foreach (var attachment in attachmentsToAdd)
+                    DispatcherQueue.TryEnqueue(() =>
                     {
-                        var card = AttachmentPreview(attachment, isUser: false, removable: false);
-                        panel.Children.Add(card);
-                    }
-                });
-            }
+                        foreach (var attachment in attachmentsToAdd)
+                        {
+                            var card = AttachmentPreview(attachment, isUser: false, removable: false);
+                            panel.Children.Add(card);
+                        }
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -1309,16 +1309,16 @@ internal sealed class ChatView : UserControl, IDisposable
                     SelectProviderAndModel(message.ProviderId, message.Model);
 
                     // User prompt edit: Delete this message and subsequent ones, and send new prompt
-                    await _pipe.RequestAsync<CommandResult>("conversations.deleteMessagesAfter", new DeleteMessagesAfterRequest(message.ConversationId, message.Id));
+                    await _pipe.RequestAsync<CommandResult>("conversations.deleteMessagesAfter", new DeleteMessagesAfterRequest(message.ConversationId, message.Id)).ConfigureAwait(false);
                     _composer.Text = newText;
-                    await SendAsync();
+                    await SendAsync().ConfigureAwait(false);
                 }
                 else
                 {
                     // Assistant response edit: Update DB and redraw in place
-                    await _pipe.RequestAsync<CommandResult>("messages.update", new MessageUpdateRequest(message.Id, newText));
+                    await _pipe.RequestAsync<CommandResult>("messages.update", new MessageUpdateRequest(message.Id, newText)).ConfigureAwait(false);
                     _notice("Message Updated", "Assistant response has been updated successfully.", InfoBarSeverity.Success);
-                    await LoadAsync();
+                    await LoadAsync().ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -1453,7 +1453,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 }
                 FlushParagraph();
                 inThink = true;
-                
+
                 var closeTag = matchedOpen.Insert(1, "/");
                 var closeIdx = line.IndexOf(closeTag, openIdx, StringComparison.OrdinalIgnoreCase);
                 if (closeIdx >= 0)
@@ -1675,16 +1675,16 @@ internal sealed class ChatView : UserControl, IDisposable
         };
 
         var headerLeft = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
-        headerLeft.Children.Add(new FontIcon 
-        { 
+        headerLeft.Children.Add(new FontIcon
+        {
             Glyph = "\uEA80", // Lightbulb icon
-            FontSize = 14, 
+            FontSize = 14,
             Foreground = UiKit.BrushFromHex("#F97316")
         });
         var headerText = UiKit.Text("Thinking Process", 12, FontWeights.SemiBold);
         headerText.Foreground = UiKit.BrushFromHex("#F97316");
         headerLeft.Children.Add(headerText);
-        
+
         expander.Header = headerLeft;
 
         var bodyBlock = new TextBlock
@@ -2370,8 +2370,8 @@ internal sealed class ChatView : UserControl, IDisposable
     {
         try
         {
-            var bytes = await _logoHttpClient.GetByteArrayAsync(url);
-            
+            var bytes = await _logoHttpClient.GetByteArrayAsync(url).ConfigureAwait(false);
+
             logoContainer.DispatcherQueue.TryEnqueue(async () =>
             {
                 try
@@ -2383,14 +2383,14 @@ internal sealed class ChatView : UserControl, IDisposable
                         await writer.StoreAsync();
                         await writer.FlushAsync();
                     }
-                    
+
                     stream.Seek(0);
-                    
+
                     var prefix = System.Text.Encoding.UTF8.GetString(bytes, 0, Math.Min(bytes.Length, 128)).TrimStart();
-                    var isSvg = prefix.StartsWith("<svg", StringComparison.OrdinalIgnoreCase) || 
+                    var isSvg = prefix.StartsWith("<svg", StringComparison.OrdinalIgnoreCase) ||
                                  prefix.StartsWith("<?xml", StringComparison.OrdinalIgnoreCase) ||
                                  prefix.Contains("<svg", StringComparison.OrdinalIgnoreCase);
-                                 
+
                     if (isSvg)
                     {
                         var svgImage = new Microsoft.UI.Xaml.Media.Imaging.SvgImageSource();
@@ -2410,7 +2410,7 @@ internal sealed class ChatView : UserControl, IDisposable
                         logoContainer.Child = logoImage;
                         await bitmapImage.SetSourceAsync(stream);
                     }
-                    
+
                     logoContainer.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
                     logoContainer.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
                 }
@@ -2447,8 +2447,8 @@ internal sealed class ChatView : UserControl, IDisposable
     {
         try
         {
-            var bytes = await _logoHttpClient.GetByteArrayAsync(url);
-            
+            var bytes = await _logoHttpClient.GetByteArrayAsync(url).ConfigureAwait(false);
+
             logoContainer.DispatcherQueue.TryEnqueue(async () =>
             {
                 try
@@ -2460,14 +2460,14 @@ internal sealed class ChatView : UserControl, IDisposable
                         await writer.StoreAsync();
                         await writer.FlushAsync();
                     }
-                    
+
                     stream.Seek(0);
-                    
+
                     var prefix = System.Text.Encoding.UTF8.GetString(bytes, 0, Math.Min(bytes.Length, 128)).TrimStart();
-                    var isSvg = prefix.StartsWith("<svg", StringComparison.OrdinalIgnoreCase) || 
+                    var isSvg = prefix.StartsWith("<svg", StringComparison.OrdinalIgnoreCase) ||
                                  prefix.StartsWith("<?xml", StringComparison.OrdinalIgnoreCase) ||
                                  prefix.Contains("<svg", StringComparison.OrdinalIgnoreCase);
-                                 
+
                     if (isSvg)
                     {
                         var svgImage = new Microsoft.UI.Xaml.Media.Imaging.SvgImageSource();
@@ -2487,7 +2487,7 @@ internal sealed class ChatView : UserControl, IDisposable
                         logoContainer.Child = logoImage;
                         await bitmapImage.SetSourceAsync(stream);
                     }
-                    
+
                     logoContainer.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
                     logoContainer.BorderThickness = new Thickness(0);
                 }
@@ -2537,7 +2537,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 if (files.Count > 0)
                 {
                     e.Handled = true;
-                    await ProcessStorageFilesAsync(files);
+                    await ProcessStorageFilesAsync(files).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -2552,16 +2552,16 @@ internal sealed class ChatView : UserControl, IDisposable
                 e.Handled = true;
                 var bitmapStreamRef = await dataPackageView.GetBitmapAsync();
                 using var stream = await bitmapStreamRef.OpenReadAsync();
-                
+
                 var tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"pasted_image_{Guid.NewGuid():N}.png");
                 using (var fileStream = System.IO.File.Create(tempPath))
                 {
                     using var classicStream = stream.AsStreamForRead();
-                    await classicStream.CopyToAsync(fileStream);
+                    await classicStream.CopyToAsync(fileStream).ConfigureAwait(false);
                 }
-                
+
                 var file = await StorageFile.GetFileFromPathAsync(tempPath);
-                await ProcessStorageFilesAsync(new List<StorageFile> { file });
+                await ProcessStorageFilesAsync(new List<StorageFile> { file }).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -2590,7 +2590,7 @@ internal sealed class ChatView : UserControl, IDisposable
             {
                 var properties = await file.GetBasicPropertiesAsync();
                 var size = (long)properties.Size;
-                
+
                 // Get the cancellation token for this file
                 var token = _uploadingFiles.TryGetValue(file.Name, out var cts) ? cts.Token : CancellationToken.None;
 
@@ -2600,10 +2600,10 @@ internal sealed class ChatView : UserControl, IDisposable
                 var contentType = FileTextExtractor.BuildContentType(filePath);
                 var processedImageTask = ProcessImageFileAsync(file, size, contentType);
 
-                await Task.WhenAll(previewTask, processedImageTask);
+                await Task.WhenAll(previewTask, processedImageTask).ConfigureAwait(false);
                 token.ThrowIfCancellationRequested();
 
-                var processed = await processedImageTask;
+                var processed = await processedImageTask.ConfigureAwait(false);
                 var finalPath = string.IsNullOrWhiteSpace(processed.path) ? (file.Path ?? string.Empty) : processed.path;
                 var finalContentType = processed.contentType ?? contentType;
 
@@ -2612,7 +2612,7 @@ internal sealed class ChatView : UserControl, IDisposable
                     finalPath,
                     finalContentType,
                     size,
-                    await previewTask,
+                    await previewTask.ConfigureAwait(false),
                     null);
             }
             catch (OperationCanceledException)
@@ -2640,7 +2640,7 @@ internal sealed class ChatView : UserControl, IDisposable
             }
         }).ToList();
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     private async Task AttachFilesAsync()
@@ -2662,7 +2662,7 @@ internal sealed class ChatView : UserControl, IDisposable
             var files = await picker.PickMultipleFilesAsync();
             if (files != null && files.Count > 0)
             {
-                await ProcessStorageFilesAsync(files);
+                await ProcessStorageFilesAsync(files).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -2674,34 +2674,34 @@ internal sealed class ChatView : UserControl, IDisposable
     private static string CleanMarkdownForClipboard(string markdown)
     {
         if (string.IsNullOrEmpty(markdown)) return string.Empty;
-        
+
         // Remove code blocks
         var text = System.Text.RegularExpressions.Regex.Replace(markdown, @"```[a-zA-Z0-9]*\n([\s\S]*?)```", "$1");
-        
+
         // Remove ticks
         text = System.Text.RegularExpressions.Regex.Replace(text, @"`([^`]+)`", "$1");
-        
+
         // Remove bold/italic markers
         text = System.Text.RegularExpressions.Regex.Replace(text, @"\*\*([^*]+)\*\*", "$1");
         text = System.Text.RegularExpressions.Regex.Replace(text, @"\*([^*]+)\*", "$1");
         text = System.Text.RegularExpressions.Regex.Replace(text, @"__([^_]+)__", "$1");
         text = System.Text.RegularExpressions.Regex.Replace(text, @"_([^_]+)_", "$1");
-        
+
         // Remove headers
         text = System.Text.RegularExpressions.Regex.Replace(text, @"^\s*#{1,6}\s+(.+)$", "$1", System.Text.RegularExpressions.RegexOptions.Multiline);
-        
+
         // Remove LaTeX math
         text = System.Text.RegularExpressions.Regex.Replace(text, @"\\\[([\s\S]*?)\\\]", "$1");
         text = System.Text.RegularExpressions.Regex.Replace(text, @"\\\(([\s\S]*?)\\\)", "$1");
         text = System.Text.RegularExpressions.Regex.Replace(text, @"\$\$([\s\S]*?)\$\$", "$1");
         text = System.Text.RegularExpressions.Regex.Replace(text, @"\$([^$]+)\$", "$1");
-        
+
         // Remove links
         text = System.Text.RegularExpressions.Regex.Replace(text, @"\[([^\]]+)\]\(([^)]+)\)", "$1 ($2)");
-        
+
         // Remove table formatting lines
         text = System.Text.RegularExpressions.Regex.Replace(text, @"^\s*\|.*\|[ \t]*$", "", System.Text.RegularExpressions.RegexOptions.Multiline);
-        
+
         return text.Trim();
     }
 
@@ -2745,7 +2745,7 @@ internal sealed class ChatView : UserControl, IDisposable
     private static async Task<(string? path, string? contentType)> ProcessImageFileAsync(StorageFile file, long size, string contentType)
     {
         // Bypass expensive resizing to provide instant attachment feedback.
-        return await Task.FromResult((file.Path, contentType));
+        return await Task.FromResult((file.Path, contentType)).ConfigureAwait(false);
     }
 
     private static async Task<string> ResizeImageForProviderAsync(string filePath)
@@ -2755,7 +2755,7 @@ internal sealed class ChatView : UserControl, IDisposable
             var fileInfo = new System.IO.FileInfo(filePath);
             var isOversizedFile = fileInfo.Length > 20 * 1024 * 1024; // > 20 MB
 
-            var bytes = await File.ReadAllBytesAsync(filePath);
+            var bytes = await File.ReadAllBytesAsync(filePath).ConfigureAwait(false);
             using var memoryStream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
             using (var dataWriter = new Windows.Storage.Streams.DataWriter(memoryStream))
             {
@@ -2765,7 +2765,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 dataWriter.DetachStream();
             }
             memoryStream.Seek(0);
-            
+
             var decoder = await Windows.Graphics.Imaging.BitmapDecoder.CreateAsync(memoryStream);
 
             uint originalWidth = decoder.OrientedPixelWidth;
@@ -2791,7 +2791,7 @@ internal sealed class ChatView : UserControl, IDisposable
             if (targetHeight == 0) targetHeight = 1;
 
             var tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"{Guid.NewGuid():N}.jpg");
-            
+
             using (var outputStream = System.IO.File.OpenWrite(tempFile))
             using (var randomAccessStream = outputStream.AsRandomAccessStream())
             {
@@ -2837,7 +2837,7 @@ internal sealed class ChatView : UserControl, IDisposable
     {
         bool busy = _sending.IsActive;
         bool uploading = _uploadingFiles.Count > 0;
-        
+
         if (busy)
         {
             _sendButton.IsEnabled = true;
@@ -2907,7 +2907,7 @@ internal sealed class ChatView : UserControl, IDisposable
         nameText.Foreground = PrimaryTextBrush();
         nameText.TextTrimming = TextTrimming.CharacterEllipsis;
         nameText.VerticalAlignment = VerticalAlignment.Center;
-        
+
         Grid.SetColumn(nameText, 1);
         grid.Children.Add(nameText);
 
@@ -2926,7 +2926,7 @@ internal sealed class ChatView : UserControl, IDisposable
             VerticalAlignment = VerticalAlignment.Center
         };
         AutomationProperties.SetName(removeButton, $"Cancel {filename}");
-        removeButton.Click += (_, _) => 
+        removeButton.Click += (_, _) =>
         {
             if (_uploadingFiles.TryGetValue(filename, out var cts))
             {
@@ -2944,8 +2944,8 @@ internal sealed class ChatView : UserControl, IDisposable
             BorderThickness = new Thickness(1),
             Padding = new Thickness(12, 0, 6, 0),
             BorderBrush = StrokeBrush(),
-            Background = IsDarkMode 
-                ? new SolidColorBrush(Windows.UI.Color.FromArgb(30, 255, 255, 255)) 
+            Background = IsDarkMode
+                ? new SolidColorBrush(Windows.UI.Color.FromArgb(30, 255, 255, 255))
                 : new SolidColorBrush(Windows.UI.Color.FromArgb(180, 255, 255, 255)),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 2, 4, 2)
@@ -2979,10 +2979,10 @@ internal sealed class ChatView : UserControl, IDisposable
         nameText.Foreground = isUser ? new SolidColorBrush(Colors.White) : PrimaryTextBrush();
         nameText.TextTrimming = TextTrimming.CharacterEllipsis;
         nameText.VerticalAlignment = VerticalAlignment.Center;
-        
+
         var sizeText = UiKit.Text(FormatBytes(attachment.SizeBytes), 11);
-        sizeText.Foreground = isUser 
-            ? new SolidColorBrush(Windows.UI.Color.FromArgb(200, 255, 255, 255)) 
+        sizeText.Foreground = isUser
+            ? new SolidColorBrush(Windows.UI.Color.FromArgb(200, 255, 255, 255))
             : SecondaryTextBrush();
         sizeText.VerticalAlignment = VerticalAlignment.Center;
 
@@ -3070,10 +3070,10 @@ internal sealed class ChatView : UserControl, IDisposable
             BorderThickness = new Thickness(1),
             Padding = new Thickness(12, 0, (removable || File.Exists(attachment.Path)) ? 6 : 12, 0),
             BorderBrush = isUser ? new SolidColorBrush(Windows.UI.Color.FromArgb(60, 255, 255, 255)) : StrokeBrush(),
-            Background = isUser 
-                ? new SolidColorBrush(Windows.UI.Color.FromArgb(40, 255, 255, 255)) 
-                : IsDarkMode 
-                    ? new SolidColorBrush(Windows.UI.Color.FromArgb(30, 255, 255, 255)) 
+            Background = isUser
+                ? new SolidColorBrush(Windows.UI.Color.FromArgb(40, 255, 255, 255))
+                : IsDarkMode
+                    ? new SolidColorBrush(Windows.UI.Color.FromArgb(30, 255, 255, 255))
                     : new SolidColorBrush(Windows.UI.Color.FromArgb(180, 255, 255, 255)),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 2, 4, 2)
@@ -3199,7 +3199,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 _messages.Children.Clear();
             }
             _messages.Children.Add(MessageRow(optimistic));
-            await ScrollToEndAsync();
+            await ScrollToEndAsync().ConfigureAwait(false);
 
             // Build the content to send — prepend skill context if one was injected
             var contentToSend = text;
@@ -3215,7 +3215,7 @@ internal sealed class ChatView : UserControl, IDisposable
 
             var request = new ChatSendRequest(conversationId, provider.Id, model, contentToSend, _whisperMode, _settings().Verbosity, processedAttachments, AgentMode: _agentMode);
             StartPollingActiveTraces();
-            var result = await _pipe.RequestAsync<ChatSendResult>("chat.send", request, _chatCts.Token);
+            var result = await _pipe.RequestAsync<ChatSendResult>("chat.send", request, _chatCts.Token).ConfigureAwait(false);
             StopPollingActiveTraces();
 
             if (result is null)
@@ -3230,8 +3230,8 @@ internal sealed class ChatView : UserControl, IDisposable
 
             _messages.Children.Add(MessageRow(result.AssistantMessage));
             _conversationId = result.AssistantMessage.ConversationId;
-            await _conversationChanged(_conversationId);
-            await ScrollToEndAsync();
+            await _conversationChanged(_conversationId).ConfigureAwait(false);
+            await ScrollToEndAsync().ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(result.Error))
             {
                 _notice(result.Queued ? "Queued for reconnect" : "Provider error", result.Error, InfoBarSeverity.Warning);
@@ -3241,13 +3241,13 @@ internal sealed class ChatView : UserControl, IDisposable
         {
             StopPollingActiveTraces();
             _messages.Children.Add(MessageRow(new ChatMessage(Guid.NewGuid().ToString("N"), conversationId, "assistant", "Generation stopped.", provider.Id, model, "error", DateTimeOffset.UtcNow)));
-            await ScrollToEndAsync();
+            await ScrollToEndAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             StopPollingActiveTraces();
             _messages.Children.Add(MessageRow(new ChatMessage(Guid.NewGuid().ToString("N"), conversationId, "assistant", Explain(ex), provider.Id, model, "error", DateTimeOffset.UtcNow)));
-            await ScrollToEndAsync();
+            await ScrollToEndAsync().ConfigureAwait(false);
             _notice("Send failed", Explain(ex), InfoBarSeverity.Error);
         }
         finally
@@ -3314,7 +3314,7 @@ internal sealed class ChatView : UserControl, IDisposable
             {
                 return 800_000; // Claude: ~200k tokens
             }
-            if (model.Contains("gpt-4") || model.Contains("gpt-4o") || model.Contains("deepseek") || 
+            if (model.Contains("gpt-4") || model.Contains("gpt-4o") || model.Contains("deepseek") ||
                 model.Contains("llama-3.1") || model.Contains("llama-3.2") || model.Contains("mistral-large") || model.Contains("qwen-2.5"))
             {
                 return 500_000; // Modern: ~128k tokens
@@ -3414,7 +3414,7 @@ internal sealed class ChatView : UserControl, IDisposable
     {
         try
         {
-            var skills = await _pipe.RequestAsync<IReadOnlyList<SkillSummary>>("skills.list") ?? Array.Empty<SkillSummary>();
+            var skills = await _pipe.RequestAsync<IReadOnlyList<SkillSummary>>("skills.list").ConfigureAwait(false) ?? Array.Empty<SkillSummary>();
             if (skills.Count == 0)
             {
                 _notice("No Skills Found", "No skill files were located. Add *.md skill files to the skills directory.", InfoBarSeverity.Warning);
@@ -3484,7 +3484,10 @@ internal sealed class ChatView : UserControl, IDisposable
                 var injectBtn = new Button
                 {
                     Content = new FontIcon { Glyph = "\uE83B", FontSize = 12 }, // Inject icon
-                    Width = 28, Height = 28, MinWidth = 28, MinHeight = 28,
+                    Width = 28,
+                    Height = 28,
+                    MinWidth = 28,
+                    MinHeight = 28,
                     Padding = new Thickness(0),
                     CornerRadius = new CornerRadius(6),
                     Background = UiKit.AccentBrush,
@@ -3497,7 +3500,7 @@ internal sealed class ChatView : UserControl, IDisposable
                     flyout?.Hide();
                     try
                     {
-                        var result = await _pipe.RequestAsync<CommandResult>("skills.read", new SimpleIdRequest(skillId));
+                        var result = await _pipe.RequestAsync<CommandResult>("skills.read", new SimpleIdRequest(skillId)).ConfigureAwait(false);
                         if (result?.Success == true && !string.IsNullOrWhiteSpace(result.Message))
                         {
                             _injectedSkillContext = result.Message;
@@ -3554,7 +3557,7 @@ internal sealed class ChatView : UserControl, IDisposable
         ModelClassifier.Resolve(modelName, out var brand, out var _);
         var lower = brand.ToLowerInvariant();
         glyph = "\uE9F9"; // default brain/AI
-        
+
         if (lower.Contains("deepseek"))
         {
             domain = "deepseek.com";
@@ -3664,7 +3667,7 @@ internal sealed class ChatView : UserControl, IDisposable
     {
         var parts = modelName.Split(':', 2);
         var code = parts[0].Trim();
-        
+
         ModelClassifier.Resolve(code, out var brand, out var resolvedFriendlyName);
         var name = parts.Length > 1 ? parts[1].Trim() : resolvedFriendlyName;
         name = ModelClassifier.FormatFriendlyName(name);
@@ -3716,9 +3719,9 @@ internal sealed class ChatView : UserControl, IDisposable
         Grid.SetColumn(logoContainer, 0);
         dropdownGrid.Children.Add(logoContainer);
 
-        var modelText = new TextBlock 
-        { 
-            Text = name, 
+        var modelText = new TextBlock
+        {
+            Text = name,
             FontWeight = FontWeights.SemiBold,
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis
@@ -3748,7 +3751,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 return;
             }
 
-            var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId));
+            var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId)).ConfigureAwait(false);
             if (conversation is null || conversation.Messages.Count == 0)
             {
                 _notice("Export Failed", "Could not retrieve messages for this conversation.", InfoBarSeverity.Error);
@@ -3770,39 +3773,39 @@ internal sealed class ChatView : UserControl, IDisposable
                     foreach (UIElement child in _messages.Children)
                     {
                         if (child.Visibility != Visibility.Visible) continue;
-                        
+
                         var fwE = child as FrameworkElement;
                         if (fwE != null && fwE.ActualHeight == 0) continue;
 
                         var rtb = new Microsoft.UI.Xaml.Media.Imaging.RenderTargetBitmap();
                         await rtb.RenderAsync(child);
-                        
+
                         var pixelBuffer = await rtb.GetPixelsAsync();
                         var pixels = System.Runtime.InteropServices.WindowsRuntime.WindowsRuntimeBufferExtensions.ToArray(pixelBuffer);
 
                         using var ms = new Windows.Storage.Streams.InMemoryRandomAccessStream();
                         var encoder = await Windows.Graphics.Imaging.BitmapEncoder.CreateAsync(Windows.Graphics.Imaging.BitmapEncoder.PngEncoderId, ms);
                         encoder.SetPixelData(
-                            Windows.Graphics.Imaging.BitmapPixelFormat.Bgra8, 
-                            Windows.Graphics.Imaging.BitmapAlphaMode.Premultiplied, 
-                            (uint)rtb.PixelWidth, 
-                            (uint)rtb.PixelHeight, 
-                            96, 
-                            96, 
+                            Windows.Graphics.Imaging.BitmapPixelFormat.Bgra8,
+                            Windows.Graphics.Imaging.BitmapAlphaMode.Premultiplied,
+                            (uint)rtb.PixelWidth,
+                            (uint)rtb.PixelHeight,
+                            96,
+                            96,
                             pixels);
                         await encoder.FlushAsync();
-                        
+
                         using var stream = ms.AsStream();
                         var imageBytes = new byte[stream.Length];
                         stream.Seek(0, System.IO.SeekOrigin.Begin);
-                        await stream.ReadExactlyAsync(imageBytes, 0, imageBytes.Length);
-                        
+                        await stream.ReadExactlyAsync(imageBytes, 0, imageBytes.Length).ConfigureAwait(false);
+
                         double actualW = fwE != null ? fwE.ActualWidth : rtb.PixelWidth;
                         double actualH = fwE != null ? fwE.ActualHeight : rtb.PixelHeight;
 
                         bubbleImages.Add((imageBytes, actualW, actualH));
                     }
-                    
+
                     byte[] pdfBytes = PdfExporter.ExportVisualToPdf(conversation.Summary.Title, bubbleImages);
                     await Windows.Storage.FileIO.WriteBytesAsync(file, pdfBytes);
                     _notice("PDF Exported", $"Conversation saved to {file.Name}", InfoBarSeverity.Success);
@@ -3846,15 +3849,15 @@ internal sealed class ChatView : UserControl, IDisposable
     private static string StripFileGenerationCode(string content)
     {
         if (string.IsNullOrEmpty(content)) return content;
-        
+
         var regex = new System.Text.RegularExpressions.Regex(
-            @"`{3}python[ \t]*\r?\n([\s\S]*?)(?:`{3}|$)", 
+            @"`{3}python[ \t]*\r?\n([\s\S]*?)(?:`{3}|$)",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase
         );
-        
+
         var matches = regex.Matches(content);
         var sb = new StringBuilder(content);
-        
+
         foreach (System.Text.RegularExpressions.Match match in matches)
         {
             var code = match.Groups[1].Value;
@@ -3863,7 +3866,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 sb.Replace(match.Value, "");
             }
         }
-        
+
         var cleaned = sb.ToString();
         cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, @"\n{3,}", "\n\n");
         return cleaned.Trim();
@@ -3881,7 +3884,7 @@ internal sealed class ChatView : UserControl, IDisposable
         {
             _pollingTimer = DispatcherQueue.CreateTimer();
             _pollingTimer.Interval = TimeSpan.FromMilliseconds(800);
-            _pollingTimerHandler ??= async (_, _) => await PollActiveTracesTickAsync();
+            _pollingTimerHandler ??= async (_, _) => await PollActiveTracesTickAsync().ConfigureAwait(false);
             _pollingTimer.Tick += _pollingTimerHandler;
         }
 
@@ -3923,7 +3926,7 @@ internal sealed class ChatView : UserControl, IDisposable
 
         try
         {
-            var active = await _pipe.RequestAsync<ActiveTracesResponse>("chat.activeTraces", new SimpleIdRequest(_conversationId));
+            var active = await _pipe.RequestAsync<ActiveTracesResponse>("chat.activeTraces", new SimpleIdRequest(_conversationId)).ConfigureAwait(false);
             if (!_isPollingActive)
             {
                 return;
@@ -4039,10 +4042,10 @@ internal sealed class ChatView : UserControl, IDisposable
         };
 
         var headerLeft = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
-        
+
         var runningCount = traces.Count(t => t.State == "running");
         var failedCount = traces.Count(t => t.State == "failed");
-        
+
         FrameworkElement statusIcon;
         if (runningCount > 0)
         {
@@ -4050,24 +4053,24 @@ internal sealed class ChatView : UserControl, IDisposable
         }
         else
         {
-            statusIcon = new FontIcon 
-            { 
-                Glyph = failedCount > 0 ? "\uE814" : "\uE73E", 
-                FontSize = 14, 
+            statusIcon = new FontIcon
+            {
+                Glyph = failedCount > 0 ? "\uE814" : "\uE73E",
+                FontSize = 14,
                 Foreground = failedCount > 0 ? UiKit.BrushFromHex("#EF4444") : UiKit.BrushFromHex("#22C55E")
             };
         }
         headerLeft.Children.Add(statusIcon);
-        
+
         var text = $"Agent Reasoning & Execution Loop ({traces.Count} trace{(traces.Count == 1 ? "" : "s")})";
         if (failedCount > 0) text += " - Terminated with Errors";
         else if (runningCount > 0) text += " - Running Autonomously...";
         else text += " - Run Complete";
-        
+
         var headerText = UiKit.Text(text, 12, FontWeights.SemiBold);
         headerText.Foreground = runningCount > 0 ? UiKit.AccentBrush : (failedCount > 0 ? UiKit.BrushFromHex("#EF4444") : UiKit.BrushFromHex("#22C55E"));
         headerLeft.Children.Add(headerText);
-        
+
         expander.Header = headerLeft;
 
         var dashboardStack = new StackPanel { Spacing = 12, Padding = new Thickness(8) };
@@ -4127,7 +4130,7 @@ internal sealed class ChatView : UserControl, IDisposable
             if (root.ValueKind != System.Text.Json.JsonValueKind.Array) return null;
 
             var stack = new StackPanel { Spacing = 6 };
-            
+
             var cardHeader = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 0, 0, 4) };
             cardHeader.Children.Add(new FontIcon { Glyph = "\uE8FD", FontSize = 13, Foreground = UiKit.AccentBrush });
             cardHeader.Children.Add(UiKit.Text("ACTIVE PLAN", 11, FontWeights.Bold));
@@ -4139,7 +4142,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 var state = step.TryGetProperty("state", out var sProp) ? sProp.GetString() ?? "pending" : "pending";
 
                 var stepRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(4, 2, 0, 2) };
-                
+
                 FrameworkElement checkboxIcon;
                 if (state == "completed")
                 {
@@ -4155,7 +4158,7 @@ internal sealed class ChatView : UserControl, IDisposable
                 }
 
                 stepRow.Children.Add(checkboxIcon);
-                
+
                 var textBlock = UiKit.Text(text, 12);
                 if (state == "completed")
                 {
@@ -4227,7 +4230,7 @@ internal sealed class ChatView : UserControl, IDisposable
     private static Border RenderAgentExecutionCard(AgentTraceCard trace)
     {
         var stack = new StackPanel { Spacing = 6 };
-        
+
         var headerGrid = new Grid
         {
             ColumnDefinitions =
@@ -4293,7 +4296,7 @@ internal sealed class ChatView : UserControl, IDisposable
         if (!string.IsNullOrWhiteSpace(trace.Detail))
         {
             var isTerminalCode = titleLower.Contains("terminal") || titleLower.Contains("bash") || trace.Detail.Contains("Executing:") || trace.Detail.Contains("Reading file:");
-            
+
             if (isTerminalCode)
             {
                 var codeText = new TextBlock
@@ -4319,11 +4322,11 @@ internal sealed class ChatView : UserControl, IDisposable
                     Background = UiKit.BrushFromHex("#2D2D2D"),
                     Padding = new Thickness(8, 4, 8, 4),
                     CornerRadius = new CornerRadius(6, 6, 0, 0),
-                    Child = new StackPanel 
+                    Child = new StackPanel
                     {
                         Orientation = Orientation.Horizontal,
                         Spacing = 6,
-                        Children = 
+                        Children =
                         {
                             new Microsoft.UI.Xaml.Shapes.Ellipse { Width = 10, Height = 10, Fill = UiKit.BrushFromHex("#FF5F56") },
                             new Microsoft.UI.Xaml.Shapes.Ellipse { Width = 10, Height = 10, Fill = UiKit.BrushFromHex("#FFBD2E") },
@@ -4335,7 +4338,7 @@ internal sealed class ChatView : UserControl, IDisposable
 
                 var terminalContainer = new StackPanel { Spacing = 0 };
                 terminalContainer.Children.Add(terminalHeader);
-                
+
                 var terminalContent = new Border
                 {
                     Background = UiKit.BrushFromHex("#1E1E1E"),
@@ -4352,7 +4355,7 @@ internal sealed class ChatView : UserControl, IDisposable
                     Child = terminalContainer,
                     Margin = new Thickness(0, 8, 0, 4)
                 };
-                
+
                 stack.Children.Add(terminalBorder);
             }
             else
@@ -4365,13 +4368,13 @@ internal sealed class ChatView : UserControl, IDisposable
 
         var isFailed = trace.State == "failed";
         var isRunning = trace.State == "running";
-        
-        var borderBrush = isFailed ? UiKit.BrushFromHex("#EF4444") 
-            : isRunning ? UiKit.AccentBrush 
+
+        var borderBrush = isFailed ? UiKit.BrushFromHex("#EF4444")
+            : isRunning ? UiKit.AccentBrush
             : ResourceBrush("CardStrokeColorDefaultBrush", "#E5E7EB");
-            
-        var background = isFailed ? UiKit.BrushFromHex("#FEF2F2") 
-            : isRunning ? ResourceBrush("CardBackgroundFillColorSecondaryBrush", "#FDF8F6") 
+
+        var background = isFailed ? UiKit.BrushFromHex("#FEF2F2")
+            : isRunning ? ResourceBrush("CardBackgroundFillColorSecondaryBrush", "#FDF8F6")
             : ResourceBrush("CardBackgroundFillColorDefaultBrush", "#FFFFFF");
 
         return new Border
@@ -4390,7 +4393,7 @@ internal sealed class ChatView : UserControl, IDisposable
     {
         var row = new StackPanel { Spacing = 4, Margin = new Thickness(0, 2, 0, 2) };
         var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        
+
         FrameworkElement icon;
         if (trace.State == "done")
         {
@@ -4404,11 +4407,11 @@ internal sealed class ChatView : UserControl, IDisposable
         {
             icon = new ProgressRing { Width = 12, Height = 12, IsActive = true };
         }
-        
+
         header.Children.Add(icon);
         header.Children.Add(UiKit.Text(trace.Title, 12, FontWeights.SemiBold));
         row.Children.Add(header);
-        
+
         if (!string.IsNullOrWhiteSpace(trace.Detail))
         {
             row.Children.Add(new Border { Margin = new Thickness(20, 0, 0, 0), Child = UiKit.Muted(trace.Detail, 11) });
@@ -4417,7 +4420,7 @@ internal sealed class ChatView : UserControl, IDisposable
     }
 }
 
-public sealed class HandCursorBorder : ContentControl
+internal sealed class HandCursorBorder : ContentControl
 {
     public HandCursorBorder()
     {
@@ -4437,7 +4440,7 @@ internal static class ModelClassifier
         }
 
         var lower = code.ToLowerInvariant();
-        
+
         // Default fallbacks
         brand = "default";
         friendlyName = code;
@@ -4547,13 +4550,13 @@ internal static class ModelClassifier
 
         // 1. Remove parameter counts (e.g. 80b, 72b, 8b, 70b, 405b, 1b, 3b, 1.5b, etc.)
         cleanCode = System.Text.RegularExpressions.Regex.Replace(cleanCode, @"\b\d+(\.\d+)?[bB]\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        
+
         // 2. Remove thinking/thought, instruct/instructed, preview/reasoner tags
         cleanCode = System.Text.RegularExpressions.Regex.Replace(cleanCode, @"\b(thinking|thought|instruct|instructed|reasoner|preview|chat|base|web)\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        
+
         // 3. Remove internal/architecture tags (e.g. a3b, a8b, etc.)
         cleanCode = System.Text.RegularExpressions.Regex.Replace(cleanCode, @"\ba\d+[bB]\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        
+
         // 4. Replace multiple hyphens/underscores/spaces with a single space
         cleanCode = System.Text.RegularExpressions.Regex.Replace(cleanCode, @"[-_]+", " ");
         cleanCode = System.Text.RegularExpressions.Regex.Replace(cleanCode, @"\s+", " ");
@@ -4583,7 +4586,7 @@ internal static class ModelClassifier
                 {
                     var word = match.Groups[1].Value;
                     var num = match.Groups[2].Value;
-                    
+
                     word = char.ToUpper(word[0]) + word.Substring(1).ToLowerInvariant();
                     if (word.Equals("Gpt", StringComparison.OrdinalIgnoreCase)) word = "GPT";
                     if (word.Equals("Glm", StringComparison.OrdinalIgnoreCase)) word = "GLM";

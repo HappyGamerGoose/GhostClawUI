@@ -279,7 +279,7 @@ internal sealed class GhostClawAgentRunner
                     localTraces.Add(updated);
                     onTrace(updated);
                 }
-                
+
                 var thinking = new AgentTraceCard("Thinking", "Analyzing next steps...", "running");
                 localTraces.Add(thinking);
                 onTrace(thinking);
@@ -316,7 +316,7 @@ internal sealed class GhostClawAgentRunner
             var pipeIdx = finishPart.IndexOf('|');
             var toolName = pipeIdx >= 0 ? finishPart.Substring(0, pipeIdx).Trim() : finishPart.Trim();
             var statusStr = pipeIdx >= 0 && finishPart.Length > pipeIdx + 9 ? finishPart.Substring(pipeIdx + 9).Trim() : "";
-            
+
             var state = statusStr.Contains("error") ? "failed" : "done";
             var title = GetNiceToolName(toolName);
 
@@ -459,7 +459,7 @@ internal sealed class GhostClawAgentRunner
             if (name == "attempt_completion" && root.TryGetProperty("result", out var r))
                 return $"Attempting completion with result: {r.GetString()}";
         }
-        catch {}
+        catch { }
         return string.IsNullOrWhiteSpace(inputJson) ? $"Running tool {name}" : $"Input: {inputJson}";
     }
 

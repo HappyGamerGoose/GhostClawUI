@@ -57,7 +57,7 @@ internal sealed class PipeHostedService : BackgroundService
     private static PipeSecurity CreatePipeSecurity()
     {
         var security = new PipeSecurity();
-        
+
         var currentUser = WindowsIdentity.GetCurrent().User;
         if (currentUser != null)
         {
@@ -81,41 +81,41 @@ internal sealed class PipeHostedService : BackgroundService
             await using (writer.ConfigureAwait(false))
             {
                 var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-            if (line is null)
-            {
-                return;
-            }
-
-            PipeEnvelope? request = null;
-            try
-            {
-                request = JsonSerializer.Deserialize<PipeEnvelope>(line, PipeJson.Options);
-                if (request is null || request.Type != "request")
+                if (line is null)
                 {
                     return;
                 }
 
-                var response = await _router.HandleAsync(request, cancellationToken).ConfigureAwait(false);
-                await writer.WriteLineAsync(JsonSerializer.Serialize(response, PipeJson.Options)).ConfigureAwait(false);
-                await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Pipe request failed");
+                PipeEnvelope? request = null;
                 try
                 {
-                    if (request is not null && pipe.IsConnected)
+                    request = JsonSerializer.Deserialize<PipeEnvelope>(line, PipeJson.Options);
+                    if (request is null || request.Type != "request")
                     {
-                        await writer.WriteLineAsync(JsonSerializer.Serialize(PipeEnvelope.ErrorResponse(request, ex.Message), PipeJson.Options)).ConfigureAwait(false);
-                        await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                        return;
+                    }
+
+                    var response = await _router.HandleAsync(request, cancellationToken).ConfigureAwait(false);
+                    await writer.WriteLineAsync(JsonSerializer.Serialize(response, PipeJson.Options)).ConfigureAwait(false);
+                    await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Pipe request failed");
+                    try
+                    {
+                        if (request is not null && pipe.IsConnected)
+                        {
+                            await writer.WriteLineAsync(JsonSerializer.Serialize(PipeEnvelope.ErrorResponse(request, ex.Message), PipeJson.Options)).ConfigureAwait(false);
+                            await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                        }
+                    }
+                    catch (Exception writeEx)
+                    {
+                        _logger.LogError(writeEx, "Failed to send error response.");
                     }
                 }
-                catch (Exception writeEx)
-                {
-                    _logger.LogError(writeEx, "Failed to send error response.");
-                }
             }
-        }
         }
     }
 }

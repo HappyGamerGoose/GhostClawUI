@@ -59,13 +59,10 @@ internal sealed class SocialView : UserControl
             ColumnDefinitions =
             {
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
-                new ColumnDefinition { Width = new GridLength(460) }
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             },
             ColumnSpacing = 24
         };
-
-        // Left: Settings Cards (Telegram + WhatsApp)
-        var leftColumn = new StackPanel { Spacing = 24 };
 
         // Telegram Card
         var tgForm = new StackPanel { Spacing = 14 };
@@ -86,8 +83,23 @@ internal sealed class SocialView : UserControl
         tgStatusRow.Children.Add(_telegramStatusText);
         tgForm.Children.Add(tgStatusRow);
 
+        var tgGuide = new StackPanel { Spacing = 8, Margin = new Thickness(0, 0, 0, 8) };
+        tgGuide.Children.Add(Bullet("1. Create a bot using Telegram's @BotFather and copy the Bot Token."));
+        tgGuide.Children.Add(Bullet("2. Get your Chat ID using @userinfobot."));
+        tgGuide.Children.Add(Bullet("3. Paste the Token and Chat ID above, enable the listener, and save."));
+        var tgExpander = new Expander
+        {
+            Header = "Setup Instructions",
+            Content = tgGuide,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(0, 16, 0, 0)
+        };
+        tgForm.Children.Add(tgExpander);
+
         var tgCard = UiKit.Card(tgForm);
-        leftColumn.Children.Add(tgCard);
+        tgCard.VerticalAlignment = VerticalAlignment.Top;
+        Grid.SetColumn(tgCard, 0);
+        body.Children.Add(tgCard);
 
         // WhatsApp Card
         var waForm = new StackPanel { Spacing = 14 };
@@ -110,36 +122,24 @@ internal sealed class SocialView : UserControl
         waStatusRow.Children.Add(_waStatusText);
         waForm.Children.Add(waStatusRow);
 
+        var waGuide = new StackPanel { Spacing = 8, Margin = new Thickness(0, 0, 0, 8) };
+        waGuide.Children.Add(Bullet("1. Create an app in the Meta Developer Portal and add WhatsApp."));
+        waGuide.Children.Add(Bullet("2. Expose your local port (e.g. 5000) using ngrok: `ngrok http 5000`."));
+        waGuide.Children.Add(Bullet("3. Configure the Meta Webhook to point to your ngrok URL (`https://your-ngrok.app/webhook/whatsapp`)."));
+        waGuide.Children.Add(Bullet("4. Copy the Access Token and Phone ID, set your Verify Token, and save."));
+        var waExpander = new Expander
+        {
+            Header = "Setup Instructions",
+            Content = waGuide,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(0, 16, 0, 0)
+        };
+        waForm.Children.Add(waExpander);
+
         var waCard = UiKit.Card(waForm);
-        leftColumn.Children.Add(waCard);
-
-        Grid.SetColumn(leftColumn, 0);
-        body.Children.Add(leftColumn);
-
-        // Right: Help Guide Card
-        var guide = new StackPanel { Spacing = 12 };
-        guide.Children.Add(UiKit.Text("Setup Instructions", 18, Microsoft.UI.Text.FontWeights.SemiBold));
-        
-        var bulletPoints = new StackPanel { Spacing = 8, Margin = new Thickness(4, 4, 0, 4) };
-        bulletPoints.Children.Add(UiKit.Text("Telegram Setup", 14, Microsoft.UI.Text.FontWeights.SemiBold));
-        bulletPoints.Children.Add(Bullet("1. Create a bot using Telegram's @BotFather and copy the Bot Token."));
-        bulletPoints.Children.Add(Bullet("2. Get your Chat ID using @userinfobot."));
-        bulletPoints.Children.Add(Bullet("3. Paste the Token and Chat ID above, enable the listener, and save."));
-        
-        bulletPoints.Children.Add(new Border { Height = 1, Background = UiKit.BrushFromHex("#333333"), Margin = new Thickness(0, 10, 0, 10) });
-        
-        bulletPoints.Children.Add(UiKit.Text("WhatsApp Setup", 14, Microsoft.UI.Text.FontWeights.SemiBold));
-        bulletPoints.Children.Add(Bullet("1. Create an app in the Meta Developer Portal and add WhatsApp."));
-        bulletPoints.Children.Add(Bullet("2. Expose your local port (e.g. 5000) using ngrok: `ngrok http 5000`."));
-        bulletPoints.Children.Add(Bullet("3. Configure the Meta Webhook to point to your ngrok URL (`https://your-ngrok.app/webhook/whatsapp`)."));
-        bulletPoints.Children.Add(Bullet("4. Copy the Access Token and Phone ID, set your Verify Token, and save."));
-
-        guide.Children.Add(bulletPoints);
-
-        var guideCard = UiKit.Card(guide);
-        guideCard.VerticalAlignment = VerticalAlignment.Top;
-        Grid.SetColumn(guideCard, 1);
-        body.Children.Add(guideCard);
+        waCard.VerticalAlignment = VerticalAlignment.Top;
+        Grid.SetColumn(waCard, 1);
+        body.Children.Add(waCard);
 
         var scroller = new ScrollViewer
         {

@@ -45,7 +45,7 @@ Configure the built-in background service to listen for Telegram messages, allow
 ### For Users
 Download the latest portable release from the **[Releases](../../releases)** tab.
 1. Extract the `.zip` file.
-2. Right-click `install.bat` and select **Run as Administrator**.
+2. Right-click `install.ps1` and select **Run with PowerShell**.
 3. Launch **GhostClawUI** from your Windows Start Menu!
 
 ### For Developers

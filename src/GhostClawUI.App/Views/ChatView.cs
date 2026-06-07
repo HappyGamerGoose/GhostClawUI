@@ -460,19 +460,19 @@ internal sealed partial class ChatView : UserControl, IDisposable
     private static List<string> SplitTableRow(string line) =>
         line.Trim().Trim('|').Split('|').Select(cell => cell.Trim()).ToList();
 
-    private static void AddMarkdownInlines(TextBlock block, string text, Brush foreground, Windows.UI.Text.FontWeight baseWeight)
+    private static void AddMarkdownInlines(InlineCollection inlines, double baseSize, string text, Brush foreground, Windows.UI.Text.FontWeight baseWeight)
     {
         var index = 0;
         while (index < text.Length)
         {
             if (TryReadDelimited(text, index, "`", out var code, out var codeEnd))
             {
-                block.Inlines.Add(new Run
+                inlines.Add(new Run
                 {
                     Text = code,
                     Foreground = foreground,
                     FontFamily = new FontFamily("Cascadia Mono"),
-                    FontSize = Math.Max(11, block.FontSize - 1),
+                    FontSize = Math.Max(11, baseSize - 1),
                     FontWeight = baseWeight
                 });
                 index = codeEnd;
@@ -482,7 +482,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
             if (TryReadDelimited(text, index, "**", out var bold, out var boldEnd) ||
                 TryReadDelimited(text, index, "__", out bold, out boldEnd))
             {
-                block.Inlines.Add(new Run
+                inlines.Add(new Run
                 {
                     Text = bold,
                     Foreground = foreground,
@@ -498,11 +498,11 @@ internal sealed partial class ChatView : UserControl, IDisposable
                 {
                     var hyperlink = new Hyperlink { NavigateUri = uri, Foreground = UiKit.AccentBrush };
                     hyperlink.Inlines.Add(new Run { Text = label });
-                    block.Inlines.Add(hyperlink);
+                    inlines.Add(hyperlink);
                 }
                 else
                 {
-                    block.Inlines.Add(new Run { Text = $"{label} ({url})", Foreground = foreground });
+                    inlines.Add(new Run { Text = $"{label} ({url})", Foreground = foreground });
                 }
 
                 index = linkEnd;
@@ -511,7 +511,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
 
             if (TryReadInlineMath(text, index, out var math, out var mathEnd))
             {
-                block.Inlines.Add(new Run
+                inlines.Add(new Run
                 {
                     Text = math,
                     Foreground = foreground,
@@ -526,7 +526,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
                 (index + 1 >= text.Length || text[index + 1] != text[index]) &&
                 TryReadDelimited(text, index, text[index].ToString(), out var italic, out var italicEnd))
             {
-                block.Inlines.Add(new Run
+                inlines.Add(new Run
                 {
                     Text = italic,
                     Foreground = foreground,
@@ -538,7 +538,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
             }
 
             var next = NextMarkdownMarker(text, index);
-            block.Inlines.Add(new Run
+            inlines.Add(new Run
             {
                 Text = text[index..next],
                 Foreground = foreground,
@@ -1226,7 +1226,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
 
     private ComboBoxItem CreateModelComboBoxItem(string modelName)
     {
-        var parts = modelName.Split(':', 2);
+        var parts = modelName.Split('|', 2);
         var code = parts[0].Trim();
 
         ModelClassifier.Resolve(code, out var brand, out var resolvedFriendlyName);
@@ -1505,73 +1505,9 @@ internal static class ModelClassifier
 
     public static string FormatFriendlyName(string cleanCode)
     {
-        if (string.IsNullOrWhiteSpace(cleanCode)) return string.Empty;
-
-        // 1. Remove parameter counts (e.g. 80b, 72b, 8b, 70b, 405b, 1b, 3b, 1.5b, etc.)
-        cleanCode = System.Text.RegularExpressions.Regex.Replace(cleanCode, @"\b\d+(\.\d+)?[bB]\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-        // 2. Remove thinking/thought, instruct/instructed, preview/reasoner tags
-        cleanCode = System.Text.RegularExpressions.Regex.Replace(cleanCode, @"\b(thinking|thought|instruct|instructed|reasoner|preview|chat|base|web)\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-        // 3. Remove internal/architecture tags (e.g. a3b, a8b, etc.)
-        cleanCode = System.Text.RegularExpressions.Regex.Replace(cleanCode, @"\ba\d+[bB]\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-        // 4. Replace multiple hyphens/underscores/spaces with a single space
-        cleanCode = System.Text.RegularExpressions.Regex.Replace(cleanCode, @"[-_]+", " ");
-        cleanCode = System.Text.RegularExpressions.Regex.Replace(cleanCode, @"\s+", " ");
-        cleanCode = cleanCode.Trim();
-
-        // Split by space to format each word
-        var parts = cleanCode.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-        for (int i = 0; i < parts.Length; i++)
-        {
-            var part = parts[i];
-            if (part.Length == 0) continue;
-
-            // Capitalize known acronyms
-            if (part.Equals("gpt", StringComparison.OrdinalIgnoreCase)) part = "GPT";
-            else if (part.Equals("oss", StringComparison.OrdinalIgnoreCase)) part = "OSS";
-            else if (part.Equals("glm", StringComparison.OrdinalIgnoreCase)) part = "GLM";
-            else if (part.Equals("llm", StringComparison.OrdinalIgnoreCase)) part = "LLM";
-            else if (part.Equals("slm", StringComparison.OrdinalIgnoreCase)) part = "SLM";
-            else if (part.Equals("r1", StringComparison.OrdinalIgnoreCase)) part = "R1";
-            else if (part.Equals("v3", StringComparison.OrdinalIgnoreCase)) part = "V3";
-            else if (part.Equals("v4", StringComparison.OrdinalIgnoreCase)) part = "V4";
-            else
-            {
-                // Capitalize standard words (e.g. qwen3 -> Qwen 3)
-                var match = System.Text.RegularExpressions.Regex.Match(part, @"^([a-zA-Z]+)(\d+)$");
-                if (match.Success)
-                {
-                    var word = match.Groups[1].Value;
-                    var num = match.Groups[2].Value;
-
-                    word = char.ToUpper(word[0]) + word.Substring(1).ToLowerInvariant();
-                    if (word.Equals("Gpt", StringComparison.OrdinalIgnoreCase)) word = "GPT";
-                    if (word.Equals("Glm", StringComparison.OrdinalIgnoreCase)) word = "GLM";
-
-                    part = word + " " + num;
-                }
-                else
-                {
-                    // Default title casing
-                    part = char.ToUpper(part[0]) + part.Substring(1).ToLowerInvariant();
-                }
-            }
-
-            parts[i] = part;
-        }
-
-        string result = string.Join(" ", parts);
-
-        // Standardize specialized hyphenated acronyms
-        result = System.Text.RegularExpressions.Regex.Replace(result, @"\bGPT OSS\b", "GPT-OSS", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        result = System.Text.RegularExpressions.Regex.Replace(result, @"\bGPT-OSS\b", "GPT-OSS", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-        // Convert "<number> <Word>" to "<number>-<Word>" (e.g. "3 Next" -> "3-Next")
-        // result = System.Text.RegularExpressions.Regex.Replace(result, @"\b(\d+(\.\d+)?)\s+([a-zA-Z]+)\b", "$1-$3");
-
-        return result;
+        return cleanCode;
     }
 }
+
+
 

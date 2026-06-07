@@ -28,7 +28,7 @@ namespace GhostClawUI.App.Views;
 internal sealed partial class ChatView
 {
 
-    private void RenderContent(StackPanel panel, string content, bool isUser)
+        private void RenderContent(StackPanel panel, string content, bool isUser)
     {
         var foreground = isUser ? new SolidColorBrush(Colors.White) : PrimaryTextBrush();
         var lines = content.ReplaceLineEndings("\n").Split('\n');
@@ -40,6 +40,22 @@ internal sealed partial class ChatView
         var inMath = false;
         var inThink = false;
 
+        var rtb = new RichTextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            IsTextSelectionEnabled = true,
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+        panel.Children.Add(rtb);
+
+        void AddInlineUI(FrameworkElement element, Thickness margin)
+        {
+            element.Margin = margin;
+            var para = new Paragraph();
+            para.Inlines.Add(new InlineUIContainer { Child = element });
+            rtb.Blocks.Add(para);
+        }
+
         void FlushParagraph()
         {
             if (paragraph.Length == 0)
@@ -47,25 +63,21 @@ internal sealed partial class ChatView
                 return;
             }
 
-            var block = MarkdownText(paragraph.ToString().TrimEnd(), foreground, _settings().Appearance.FontSize, FontWeights.Normal, isUser);
-            block.Margin = new Thickness(0, 4, 0, 4); // Premium airy spacing
-            panel.Children.Add(block);
+            var para = new Paragraph { Margin = new Thickness(0, 4, 0, 4) };
+            AddMarkdownInlines(para.Inlines, _settings().Appearance.FontSize, paragraph.ToString().TrimEnd(), foreground, FontWeights.Normal);
+            rtb.Blocks.Add(para);
             paragraph.Clear();
         }
 
         void FlushCode()
         {
-            var block = CodeBlock(code.ToString().TrimEnd(), isUser);
-            block.Margin = new Thickness(0, 8, 0, 8);
-            panel.Children.Add(block);
+            AddInlineUI(CodeBlock(code.ToString().TrimEnd(), isUser), new Thickness(0, 8, 0, 8));
             code.Clear();
         }
 
         void FlushMath()
         {
-            var block = MathBlock(math.ToString().TrimEnd(), isUser);
-            block.Margin = new Thickness(0, 8, 0, 8);
-            panel.Children.Add(block);
+            AddInlineUI(MathBlock(math.ToString().TrimEnd(), isUser), new Thickness(0, 8, 0, 8));
             math.Clear();
         }
 
@@ -76,9 +88,7 @@ internal sealed partial class ChatView
                 return;
             }
 
-            var block = ThinkBlock(think.ToString().TrimEnd(), isUser);
-            block.Margin = new Thickness(0, 8, 0, 8);
-            panel.Children.Add(block);
+            AddInlineUI(ThinkBlock(think.ToString().TrimEnd(), isUser), new Thickness(0, 8, 0, 8));
             think.Clear();
         }
 
@@ -210,9 +220,7 @@ internal sealed partial class ChatView
                 }
 
                 i--;
-                var tableBlock = TableBlock(table, isUser);
-                tableBlock.Margin = new Thickness(0, 10, 0, 10);
-                panel.Children.Add(tableBlock);
+                AddInlineUI(TableBlock(table, isUser), new Thickness(0, 10, 0, 10));
                 continue;
             }
 
@@ -225,7 +233,7 @@ internal sealed partial class ChatView
                     Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
                     Margin = new Thickness(0, 16, 0, 16)
                 };
-                panel.Children.Add(hr);
+                AddInlineUI(hr, new Thickness(0));
                 continue;
             }
 
@@ -233,63 +241,57 @@ internal sealed partial class ChatView
             {
                 FlushParagraph();
                 var bump = headingLevel == 1 ? 5 : headingLevel == 2 ? 3 : headingLevel == 3 ? 2 : 1;
-                var headingBlock = MarkdownText(headingText, foreground, _settings().Appearance.FontSize + bump, FontWeights.SemiBold, isUser);
-                headingBlock.Margin = new Thickness(0, 12, 0, 6);
-                panel.Children.Add(headingBlock);
+                var para = new Paragraph { Margin = new Thickness(0, 12, 0, 6) };
+                AddMarkdownInlines(para.Inlines, _settings().Appearance.FontSize + bump, headingText, foreground, FontWeights.SemiBold);
+                rtb.Blocks.Add(para);
                 continue;
             }
 
             if (TryBullet(trimmed, out var bulletText))
             {
                 FlushParagraph();
-                var listItemBlock = ListItem("\u2022", bulletText, foreground, isUser);
-                listItemBlock.Margin = new Thickness(12, 3, 0, 3);
-                panel.Children.Add(listItemBlock);
+                var para = new Paragraph { Margin = new Thickness(12, 3, 0, 3) };
+                para.Inlines.Add(new Run { Text = "\u2022\t", Foreground = foreground });
+                AddMarkdownInlines(para.Inlines, _settings().Appearance.FontSize, bulletText, foreground, FontWeights.Normal);
+                rtb.Blocks.Add(para);
                 continue;
             }
 
             if (TryNumbered(trimmed, out var number, out var numbered))
             {
                 FlushParagraph();
-                var listItemBlock = ListItem(number, numbered, foreground, isUser);
-                listItemBlock.Margin = new Thickness(12, 3, 0, 3);
-                panel.Children.Add(listItemBlock);
+                var para = new Paragraph { Margin = new Thickness(12, 3, 0, 3) };
+                para.Inlines.Add(new Run { Text = number + "\t", Foreground = foreground });
+                AddMarkdownInlines(para.Inlines, _settings().Appearance.FontSize, numbered, foreground, FontWeights.Normal);
+                rtb.Blocks.Add(para);
                 continue;
             }
 
             if (trimmed.StartsWith("> ", StringComparison.Ordinal))
             {
                 FlushParagraph();
-                var quoteBlock = QuoteBlock(trimmed[2..], isUser);
-                quoteBlock.Margin = new Thickness(0, 8, 0, 8);
-                panel.Children.Add(quoteBlock);
+                AddInlineUI(QuoteBlock(trimmed[2..], isUser), new Thickness(0, 8, 0, 8));
                 continue;
             }
 
             if (trimmed.StartsWith("\\[", StringComparison.Ordinal) && trimmed.EndsWith("\\]", StringComparison.Ordinal) && trimmed.Length > 4)
             {
                 FlushParagraph();
-                var mathBlock = MathBlock(trimmed[2..^2], isUser);
-                mathBlock.Margin = new Thickness(0, 8, 0, 8);
-                panel.Children.Add(mathBlock);
+                AddInlineUI(MathBlock(trimmed[2..^2], isUser), new Thickness(0, 8, 0, 8));
                 continue;
             }
 
             if (trimmed.StartsWith("$$", StringComparison.Ordinal) && trimmed.EndsWith("$$", StringComparison.Ordinal) && trimmed.Length > 4)
             {
                 FlushParagraph();
-                var mathBlock = MathBlock(trimmed[2..^2], isUser);
-                mathBlock.Margin = new Thickness(0, 8, 0, 8);
-                panel.Children.Add(mathBlock);
+                AddInlineUI(MathBlock(trimmed[2..^2], isUser), new Thickness(0, 8, 0, 8));
                 continue;
             }
 
             if (trimmed.StartsWith('$') && trimmed.EndsWith('$') && trimmed.Length > 2)
             {
                 FlushParagraph();
-                var mathBlock = MathBlock(trimmed[1..^1], isUser);
-                mathBlock.Margin = new Thickness(0, 8, 0, 8);
-                panel.Children.Add(mathBlock);
+                AddInlineUI(MathBlock(trimmed[1..^1], isUser), new Thickness(0, 8, 0, 8));
                 continue;
             }
 
@@ -319,7 +321,6 @@ internal sealed partial class ChatView
         FlushParagraph();
     }
 
-
     private TextBlock MarkdownText(string text, Brush foreground, double size, Windows.UI.Text.FontWeight weight, bool isUser = false)
     {
         var block = new TextBlock
@@ -333,7 +334,7 @@ internal sealed partial class ChatView
             IsTextSelectionEnabled = true,
             HorizontalAlignment = HorizontalAlignment.Left
         };
-        AddMarkdownInlines(block, text, foreground, weight);
+        AddMarkdownInlines(block.Inlines, size, text, foreground, weight);
         return block;
     }
 

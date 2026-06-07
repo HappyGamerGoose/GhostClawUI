@@ -133,8 +133,14 @@ internal sealed class ProvidersView : UserControl
         buttons.Children.Add(UiKit.Button("New", Symbol.Add, (_, _) => ClearForm()));
         form.Children.Add(buttons);
 
-        _formCard = UiKit.Card(form);
-        _formCard.VerticalAlignment = VerticalAlignment.Top;
+        var formScroll = new ScrollViewer
+        {
+            Content = form,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+
+        _formCard = UiKit.Card(formScroll);
+        _formCard.VerticalAlignment = VerticalAlignment.Stretch;
         Grid.SetColumn(_formCard, 1);
         _bodyGrid.Children.Add(_formCard);
 

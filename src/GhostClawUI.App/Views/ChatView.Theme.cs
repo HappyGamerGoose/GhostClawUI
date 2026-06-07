@@ -102,6 +102,12 @@ internal sealed partial class ChatView
                 return UiKit.BrushFromHex("#EFF6FF");
             case "xiaomi":
                 return UiKit.BrushFromHex("#FFF0E6");
+            case "xai":
+                return UiKit.BrushFromHex("#E5E7EB");
+            case "elevenlabs":
+                return UiKit.BrushFromHex("#F3F4F6");
+            case "cohere":
+                return UiKit.BrushFromHex("#F0FDF4");
             default:
                 return new SolidColorBrush(Windows.UI.Color.FromArgb(255, 241, 245, 249)); // light slate fallback
         }
@@ -222,7 +228,7 @@ internal sealed partial class ChatView
     {
         try
         {
-            var bytes = await _logoHttpClient.GetByteArrayAsync(url).ConfigureAwait(false);
+            var bytes = await _logoHttpClient.GetByteArrayAsync(url);
 
             logoContainer.DispatcherQueue.TryEnqueue(async () =>
             {
@@ -387,6 +393,28 @@ internal sealed partial class ChatView
             color = "#FF6700";
             bg = "#FFF0E6";
             return "xiaomi";
+        }
+
+        if (lower.Contains("xai") || lower.Contains("grok"))
+        {
+            domain = "x.ai";
+            color = "#000000";
+            bg = "#E5E7EB";
+            return "xai";
+        }
+        if (lower.Contains("elevenlabs") || lower.Contains("eleven"))
+        {
+            domain = "elevenlabs.io";
+            color = "#000000";
+            bg = "#F3F4F6";
+            return "elevenlabs";
+        }
+        if (lower.Contains("cohere") || lower.Contains("command"))
+        {
+            domain = "cohere.com";
+            color = "#39594D";
+            bg = "#F0FDF4";
+            return "cohere";
         }
 
         domain = "openai.com"; // default fallback for domain logos

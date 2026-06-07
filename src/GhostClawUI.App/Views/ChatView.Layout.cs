@@ -121,7 +121,7 @@ internal sealed partial class ChatView
                 !Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
             {
                 e.Handled = true;
-                await SendAsync().ConfigureAwait(false);
+                await SendAsync();
             }
         };
 
@@ -211,13 +211,11 @@ internal sealed partial class ChatView
             Foreground = PrimaryTextBrush()
         };
         AutomationProperties.SetName(attachBtn, "Attach files");
-        attachBtn.Click += async (_, _) => await AttachFilesAsync().ConfigureAwait(false);
+        attachBtn.Click += async (_, _) => await AttachFilesAsync();
 
         // Pointer visual feedback for attachBtn
-        attachBtn.PointerEntered += (s, e) => { attachBtn.Background = IsDarkMode ? UiKit.BrushFromHex("#2C3540") : UiKit.BrushFromHex("#E5E7EB"); };
-        attachBtn.PointerExited += (s, e) => { attachBtn.Background = ControlSurfaceBrush(); };
-        attachBtn.PointerPressed += (s, e) => { attachBtn.Background = IsDarkMode ? UiKit.BrushFromHex("#1F2937") : UiKit.BrushFromHex("#D1D5DB"); };
-        attachBtn.PointerReleased += (s, e) => { attachBtn.Background = IsDarkMode ? UiKit.BrushFromHex("#2C3540") : UiKit.BrushFromHex("#E5E7EB"); };
+        attachBtn.Resources["ButtonBackgroundPointerOver"] = IsDarkMode ? UiKit.BrushFromHex("#2C3540") : UiKit.BrushFromHex("#E5E7EB");
+        attachBtn.Resources["ButtonBackgroundPressed"] = IsDarkMode ? UiKit.BrushFromHex("#1F2937") : UiKit.BrushFromHex("#D1D5DB");
 
         rightPanel.Children.Add(attachBtn);
 
@@ -232,58 +230,7 @@ internal sealed partial class ChatView
         _sendButton.Background = UiKit.AccentBrush;
         _sendButton.BorderBrush = UiKit.AccentBrush;
 
-        // Pointer visual feedback for send button
-        _sendButton.PointerEntered += (s, e) =>
-        {
-            var isBusy = _sending.IsActive;
-            if (isBusy)
-            {
-                _sendButton.Background = UiKit.BrushFromHex("#EF4444");
-            }
-            else
-            {
-                var color = UiKit.AccentBrush.Color;
-                _sendButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(220, color.R, color.G, color.B));
-            }
-        };
-        _sendButton.PointerExited += (s, e) =>
-        {
-            var isBusy = _sending.IsActive;
-            if (isBusy)
-            {
-                _sendButton.Background = UiKit.BrushFromHex("#DC2626");
-            }
-            else
-            {
-                _sendButton.Background = UiKit.AccentBrush;
-            }
-        };
-        _sendButton.PointerPressed += (s, e) =>
-        {
-            var isBusy = _sending.IsActive;
-            if (isBusy)
-            {
-                _sendButton.Background = UiKit.BrushFromHex("#B91C1C");
-            }
-            else
-            {
-                var color = UiKit.AccentBrush.Color;
-                _sendButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(180, color.R, color.G, color.B));
-            }
-        };
-        _sendButton.PointerReleased += (s, e) =>
-        {
-            var isBusy = _sending.IsActive;
-            if (isBusy)
-            {
-                _sendButton.Background = UiKit.BrushFromHex("#EF4444");
-            }
-            else
-            {
-                var color = UiKit.AccentBrush.Color;
-                _sendButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(220, color.R, color.G, color.B));
-            }
-        };
+        // Pointer visual feedback for send button is handled in UpdateSendButtonState
 
         rightPanel.Children.Add(_sendButton);
 
@@ -350,6 +297,8 @@ internal sealed partial class ChatView
             _sendButton.Content = new FontIcon { Glyph = "\uE15B", FontSize = 12, Foreground = new SolidColorBrush(Colors.White) };
             _sendButton.Background = UiKit.BrushFromHex("#DC2626");
             _sendButton.BorderBrush = UiKit.BrushFromHex("#DC2626");
+            _sendButton.Resources["ButtonBackgroundPointerOver"] = UiKit.BrushFromHex("#EF4444");
+            _sendButton.Resources["ButtonBackgroundPressed"] = UiKit.BrushFromHex("#B91C1C");
             AutomationProperties.SetName(_sendButton, "Stop generation");
         }
         else
@@ -358,6 +307,9 @@ internal sealed partial class ChatView
             _sendButton.Content = new FontIcon { Glyph = "\uE111", FontSize = 12, Foreground = new SolidColorBrush(Colors.White) };
             _sendButton.Background = UiKit.AccentBrush;
             _sendButton.BorderBrush = UiKit.AccentBrush;
+            var color = UiKit.AccentBrush.Color;
+            _sendButton.Resources["ButtonBackgroundPointerOver"] = new SolidColorBrush(Windows.UI.Color.FromArgb(220, color.R, color.G, color.B));
+            _sendButton.Resources["ButtonBackgroundPressed"] = new SolidColorBrush(Windows.UI.Color.FromArgb(180, color.R, color.G, color.B));
             AutomationProperties.SetName(_sendButton, "Send message");
         }
     }

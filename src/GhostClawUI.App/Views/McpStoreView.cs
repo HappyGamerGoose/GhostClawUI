@@ -80,14 +80,14 @@ internal sealed class McpStoreView : UserControl
             Text = "Quick Add",
             Icon = new FontIcon { Glyph = "\uE8A5", FontFamily = new FontFamily("Segoe Fluent Icons,Segoe MDL2 Assets") }
         };
-        quickAddOption.Click += async (_, _) => await ShowQuickAddDialogAsync().ConfigureAwait(false);
+        quickAddOption.Click += async (_, _) => await ShowQuickAddDialogAsync();
 
         var jsonAddOption = new MenuFlyoutItem
         {
             Text = "Add using JSON",
             Icon = new FontIcon { Glyph = "\uE943", FontFamily = new FontFamily("Segoe Fluent Icons,Segoe MDL2 Assets") }
         };
-        jsonAddOption.Click += async (_, _) => await ShowJsonAddDialogAsync().ConfigureAwait(false);
+        jsonAddOption.Click += async (_, _) => await ShowJsonAddDialogAsync();
 
         flyout.Items.Add(quickAddOption);
         flyout.Items.Add(jsonAddOption);
@@ -96,7 +96,7 @@ internal sealed class McpStoreView : UserControl
         Grid.SetColumn(addBtn, 2);
         top.Children.Add(addBtn);
 
-        var refresh = UiKit.Button("Refresh", Symbol.Sync, async (_, _) => await FetchServersAsync().ConfigureAwait(false));
+        var refresh = UiKit.Button("Refresh", Symbol.Sync, async (_, _) => await FetchServersAsync());
         Grid.SetColumn(refresh, 3);
         top.Children.Add(refresh);
 
@@ -119,7 +119,7 @@ internal sealed class McpStoreView : UserControl
 
         try
         {
-            var rawList = await _pipe.RequestAsync<IReadOnlyList<McpServerDefinition>>("mcp.list").ConfigureAwait(false) ?? Array.Empty<McpServerDefinition>();
+            var rawList = await _pipe.RequestAsync<IReadOnlyList<McpServerDefinition>>("mcp.list") ?? Array.Empty<McpServerDefinition>();
 
             _allLocalServers.Clear();
             foreach (var server in rawList)
@@ -287,9 +287,9 @@ internal sealed class McpStoreView : UserControl
             {
                 buttons.Children.Add(UiKit.Button("Update", Symbol.Sync, async (_, _) =>
                 {
-                    var result = await _pipe.RequestAsync<CommandResult>("mcp.update", new McpServerRequest(server.Id, server.Name, server.Command, server.Args, server.RegistryUrl)).ConfigureAwait(false);
+                    var result = await _pipe.RequestAsync<CommandResult>("mcp.update", new McpServerRequest(server.Id, server.Name, server.Command, server.Args, server.RegistryUrl));
                     _notice(result?.Success == true ? "MCP updated" : "MCP failed", result?.Message ?? "", result?.Success == true ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
-                    await FetchServersAsync().ConfigureAwait(false);
+                    await FetchServersAsync();
                 }));
                 buttons.Children.Add(UiKit.Button("Uninstall", Symbol.Delete, async (_, _) =>
                 {
@@ -305,9 +305,9 @@ internal sealed class McpStoreView : UserControl
                     var res = await dialog.ShowAsync();
                     if (res == ContentDialogResult.Primary)
                     {
-                        var result = await _pipe.RequestAsync<CommandResult>("mcp.uninstall", new McpServerRequest(server.Id, server.Name, server.Command, server.Args, server.RegistryUrl)).ConfigureAwait(false);
+                        var result = await _pipe.RequestAsync<CommandResult>("mcp.uninstall", new McpServerRequest(server.Id, server.Name, server.Command, server.Args, server.RegistryUrl));
                         _notice(result?.Success == true ? "MCP uninstalled" : "MCP failed", result?.Message ?? "", result?.Success == true ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
-                        await FetchServersAsync().ConfigureAwait(false);
+                        await FetchServersAsync();
                     }
                 }));
             }
@@ -315,9 +315,9 @@ internal sealed class McpStoreView : UserControl
             {
                 buttons.Children.Add(UiKit.PrimaryButton("Install", Symbol.Download, async (_, _) =>
                 {
-                    var result = await _pipe.RequestAsync<CommandResult>("mcp.install", new McpServerRequest(server.Id, server.Name, server.Command, server.Args, server.RegistryUrl)).ConfigureAwait(false);
+                    var result = await _pipe.RequestAsync<CommandResult>("mcp.install", new McpServerRequest(server.Id, server.Name, server.Command, server.Args, server.RegistryUrl));
                     _notice(result?.Success == true ? "MCP installed" : "MCP failed", result?.Message ?? "", result?.Success == true ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
-                    await FetchServersAsync().ConfigureAwait(false);
+                    await FetchServersAsync();
                 }));
                 buttons.Children.Add(UiKit.Button("Delete", Symbol.Delete, async (_, _) =>
                 {
@@ -333,9 +333,9 @@ internal sealed class McpStoreView : UserControl
                     var res = await dialog.ShowAsync();
                     if (res == ContentDialogResult.Primary)
                     {
-                        var result = await _pipe.RequestAsync<CommandResult>("mcp.uninstall", new McpServerRequest(server.Id, server.Name, server.Command, server.Args, server.RegistryUrl)).ConfigureAwait(false);
+                        var result = await _pipe.RequestAsync<CommandResult>("mcp.uninstall", new McpServerRequest(server.Id, server.Name, server.Command, server.Args, server.RegistryUrl));
                         _notice(result?.Success == true ? "MCP deleted" : "MCP failed", result?.Message ?? "", result?.Success == true ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
-                        await FetchServersAsync().ConfigureAwait(false);
+                        await FetchServersAsync();
                     }
                 }));
             }
@@ -618,14 +618,14 @@ internal sealed class McpStoreView : UserControl
             }
 
             var request = new McpServerRequest(id, name, command, args, registryUrl);
-            var saveResult = await _pipe.RequestAsync<CommandResult>("mcp.install", request).ConfigureAwait(false);
+            var saveResult = await _pipe.RequestAsync<CommandResult>("mcp.install", request);
 
             if (saveResult?.Success == true)
             {
                 if (!installAndEnable)
                 {
                     // Register but disable
-                    await _pipe.RequestAsync<CommandResult>("mcp.uninstall", request).ConfigureAwait(false);
+                    await _pipe.RequestAsync<CommandResult>("mcp.uninstall", request);
                 }
 
                 // If description had environment variables, we update the server's description in SQLite directly
@@ -634,7 +634,7 @@ internal sealed class McpStoreView : UserControl
                 // in settings if needed, or by invoking the update pipeline if the service supports it).
                 // Actually, installing manual server works beautifully and stores the Name and Command!
                 _notice(installAndEnable ? "MCP server enabled" : "MCP server saved", $"{name} added successfully.", InfoBarSeverity.Success);
-                await FetchServersAsync().ConfigureAwait(false);
+                await FetchServersAsync();
             }
             else
             {
@@ -747,16 +747,16 @@ internal sealed class McpStoreView : UserControl
 
                 if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("mcpServers", out var mcpServersEl) && mcpServersEl.ValueKind == JsonValueKind.Object)
                 {
-                    await ProcessMcpServersJsonAsync(mcpServersEl, installAndEnable).ConfigureAwait(false);
+                    await ProcessMcpServersJsonAsync(mcpServersEl, installAndEnable);
                 }
                 else if (root.ValueKind == JsonValueKind.Object && (root.TryGetProperty("command", out _) || root.TryGetProperty("type", out _)))
                 {
                     string id = "manual-" + Guid.NewGuid().ToString("N")[..8];
-                    await ProcessSingleServerJsonAsync(id, root, installAndEnable).ConfigureAwait(false);
+                    await ProcessSingleServerJsonAsync(id, root, installAndEnable);
                 }
                 else if (root.ValueKind == JsonValueKind.Object)
                 {
-                    await ProcessMcpServersJsonAsync(root, installAndEnable).ConfigureAwait(false);
+                    await ProcessMcpServersJsonAsync(root, installAndEnable);
                 }
                 else
                 {
@@ -764,7 +764,7 @@ internal sealed class McpStoreView : UserControl
                 }
 
                 _notice(installAndEnable ? "MCP configurations enabled" : "MCP configurations saved", "Parsed and registered manual settings cleanly.", InfoBarSeverity.Success);
-                await FetchServersAsync().ConfigureAwait(false);
+                await FetchServersAsync();
             }
             catch (Exception ex)
             {
@@ -781,7 +781,7 @@ internal sealed class McpStoreView : UserControl
             var serverVal = prop.Value;
             if (serverVal.ValueKind == JsonValueKind.Object)
             {
-                await ProcessSingleServerJsonAsync(serverId, serverVal, enable).ConfigureAwait(false);
+                await ProcessSingleServerJsonAsync(serverId, serverVal, enable);
             }
         }
     }
@@ -848,10 +848,10 @@ internal sealed class McpStoreView : UserControl
         }
 
         var request = new McpServerRequest(id, name, command, args, registryUrl);
-        await _pipe.RequestAsync<CommandResult>("mcp.install", request).ConfigureAwait(false);
+        await _pipe.RequestAsync<CommandResult>("mcp.install", request);
         if (!enable)
         {
-            await _pipe.RequestAsync<CommandResult>("mcp.uninstall", request).ConfigureAwait(false);
+            await _pipe.RequestAsync<CommandResult>("mcp.uninstall", request);
         }
     }
 

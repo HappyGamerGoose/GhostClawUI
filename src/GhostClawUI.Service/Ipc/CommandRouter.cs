@@ -23,6 +23,7 @@ internal sealed class CommandRouter
     private readonly GhostClawSupervisor _supervisor;
     private readonly AppPaths _paths;
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, List<AgentTraceCard>> _runningTraces = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> _conversationLocks = new();
 
     public event Action<string, AgentTraceCard>? OnAgentTraceEmitted;
 
@@ -164,10 +165,14 @@ internal sealed class CommandRouter
 
     private async Task<ChatSendResult> SendChatAsync(ChatSendRequest chatRequest, JsonNode? rawPayload, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(chatRequest.ProviderId))
+        var conversationLock = _conversationLocks.GetOrAdd(chatRequest.ConversationId ?? "", _ => new SemaphoreSlim(1, 1));
+        await conversationLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            throw new InvalidOperationException("Choose a provider before sending.");
-        }
+            if (string.IsNullOrWhiteSpace(chatRequest.ProviderId))
+            {
+                throw new InvalidOperationException("Choose a provider before sending.");
+            }
 
         if (string.IsNullOrWhiteSpace(chatRequest.Model))
         {
@@ -180,7 +185,7 @@ internal sealed class CommandRouter
         {
             if (string.IsNullOrWhiteSpace(att.TextPreview) && !string.IsNullOrWhiteSpace(att.Path) && File.Exists(att.Path))
             {
-                var text = FileTextExtractor.ReadTextPreviewAsync(att.Path, att.SizeBytes, 200000).GetAwaiter().GetResult();
+                var text = FileTextExtractor.ReadTextPreviewAsync(att.Path, att.SizeBytes, int.MaxValue).GetAwaiter().GetResult();
                 if (!string.IsNullOrWhiteSpace(text))
                 {
                     processedAttachments.Add(new ChatAttachment(att.Name, att.Path, att.ContentType, att.SizeBytes, text, att.DataUri));
@@ -207,7 +212,7 @@ internal sealed class CommandRouter
                         {
                             using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
                             using var reader = new System.IO.StreamReader(stream);
-                            var buffer = new char[200000];
+                            var buffer = new char[int.MaxValue / 100]; // Reasonable chunk instead of hardcoded 200k
                             int read = await reader.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
                             var html = new string(buffer, 0, read);
 
@@ -215,7 +220,7 @@ internal sealed class CommandRouter
                             plainText = System.Text.RegularExpressions.Regex.Replace(plainText, "<script.*?>[\\s\\S]*?</script>", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                             plainText = System.Text.RegularExpressions.Regex.Replace(plainText, "<[^>]+>", " ");
                             plainText = System.Text.RegularExpressions.Regex.Replace(plainText, @"\s+", " ").Trim();
-                            if (plainText.Length > 20000) plainText = plainText.Substring(0, 20000) + "...";
+
 
                             var uri = new Uri(url);
                             processedAttachments.Add(new ChatAttachment(
@@ -528,6 +533,11 @@ internal sealed class CommandRouter
         var assistant = _store.AddMessage(conversationId, "assistant", content ?? string.Empty, chatRequest.ProviderId, chatRequest.Model, "message", assistantMetadata);
         StoreRememberedFacts(content ?? string.Empty, provider, chatRequest.Model, apiKey);
         return new ChatSendResult(assistant, trace, facts, false, null);
+        }
+        finally
+        {
+            conversationLock.Release();
+        }
     }
 
     private static JsonObject? BuildAttachmentMetadata(List<ChatAttachment> attachments) =>
@@ -1546,7 +1556,7 @@ Message to analyze:
                                 file,
                                 contentType,
                                 fileInfo.Length,
-                                FileTextExtractor.ReadTextPreviewAsync(file, fileInfo.Length, 200000).GetAwaiter().GetResult(),
+                                FileTextExtractor.ReadTextPreviewAsync(file, fileInfo.Length, int.MaxValue).GetAwaiter().GetResult(),
                                 null
                             );
                             generatedAttachments.Add(attachment);
@@ -1730,7 +1740,7 @@ Message to analyze:
                     fullPath,
                     contentType,
                     fileInfo.Length,
-                    FileTextExtractor.ReadTextPreviewAsync(fullPath, fileInfo.Length, 200000).GetAwaiter().GetResult(),
+                    FileTextExtractor.ReadTextPreviewAsync(fullPath, fileInfo.Length, int.MaxValue).GetAwaiter().GetResult(),
                     null
                 );
                 attachments.Add(attachment);

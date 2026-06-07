@@ -126,7 +126,7 @@ internal sealed partial class ChatView
                 return;
             }
 
-            var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId)).ConfigureAwait(false);
+            var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId));
             if (conversation is null || conversation.Messages.Count == 0)
             {
                 _notice("Export Failed", "Could not retrieve messages for this conversation.", InfoBarSeverity.Error);
@@ -173,7 +173,7 @@ internal sealed partial class ChatView
                         using var stream = ms.AsStream();
                         var imageBytes = new byte[stream.Length];
                         stream.Seek(0, System.IO.SeekOrigin.Begin);
-                        await stream.ReadExactlyAsync(imageBytes, 0, imageBytes.Length).ConfigureAwait(false);
+                        await stream.ReadExactlyAsync(imageBytes, 0, imageBytes.Length);
 
                         double actualW = fwE != null ? fwE.ActualWidth : rtb.PixelWidth;
                         double actualH = fwE != null ? fwE.ActualHeight : rtb.PixelHeight;

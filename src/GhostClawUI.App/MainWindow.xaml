@@ -11,13 +11,19 @@
             </TransitionCollection>
         </Grid.ChildrenTransitions>
         <Grid Background="Transparent">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="_sidebarColumn" Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
+            <Grid x:Name="AppTitleBar" Height="40" Background="Transparent" Grid.Row="0" Grid.ColumnSpan="2" />
+
             <!-- Sidebar -->
-            <Border x:Name="_sidebarBorder" Width="306" Padding="18,18,18,18" BorderThickness="0,0,1,0" Grid.Column="0">
+            <Border x:Name="_sidebarBorder" Width="306" Padding="18,0,18,18" BorderThickness="0,0,1,0" Grid.Column="0" Grid.Row="1">
                 <Grid>
                     <!-- Expanded Sidebar -->
                     <Grid x:Name="_expandedSidebar">
@@ -70,7 +76,7 @@
             </Border>
 
             <!-- Main -->
-            <Grid Grid.Column="1">
+            <Grid Grid.Column="1" Grid.Row="1">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />

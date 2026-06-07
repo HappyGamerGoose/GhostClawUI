@@ -9,7 +9,7 @@ namespace GhostClawUI.App.Ui;
 
 internal static class UiKit
 {
-    public static bool IsDarkMode => Application.Current.RequestedTheme == ApplicationTheme.Dark;
+    public static bool IsDarkMode => MainWindow.Instance?.IsDarkMode ?? (Application.Current.RequestedTheme == ApplicationTheme.Dark);
 
     public static readonly Thickness PagePadding = new(34, 30, 34, 28);
     public static readonly SolidColorBrush AccentBrush = BrushFromHex("#0B63F6");

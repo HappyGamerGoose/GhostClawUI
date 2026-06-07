@@ -36,7 +36,7 @@ internal sealed class SettingsView : UserControl
             _saveTimer.Stop();
             try
             {
-                await SaveAsync(showNotice: false).ConfigureAwait(false);
+                await SaveAsync(showNotice: false);
             }
             catch (Exception ex)
             {
@@ -99,10 +99,10 @@ internal sealed class SettingsView : UserControl
         {
             try
             {
-                var result = await _pipe.RequestAsync<ExportResult>("data.export").ConfigureAwait(false);
+                var result = await _pipe.RequestAsync<ExportResult>("data.export");
                 if (result is not null)
                 {
-                    await _saveExport(result).ConfigureAwait(false);
+                    await _saveExport(result);
                 }
                 else
                 {
@@ -130,7 +130,7 @@ internal sealed class SettingsView : UserControl
             {
                 try
                 {
-                    var purgeRes = await _pipe.RequestAsync<CommandResult>("data.purge").ConfigureAwait(false);
+                    var purgeRes = await _pipe.RequestAsync<CommandResult>("data.purge");
                     if (purgeRes?.Success == true)
                     {
                         _notice("Data purged", "All database tables cleared.", InfoBarSeverity.Success);
@@ -175,7 +175,7 @@ internal sealed class SettingsView : UserControl
     private void Load()
     {
         _loading = true;
-        _verbosity.SelectedItem = _settings.Verbosity;
+        _verbosity.SelectedItem = ((string[])_verbosity.ItemsSource).FirstOrDefault(x => string.Equals(x, _settings.Verbosity, StringComparison.OrdinalIgnoreCase)) ?? "Minimal";
         _fallback.IsOn = _settings.FallbackProvidersEnabled;
         _silent.IsOn = _settings.SilentToolConfirmations;
         _updates.IsOn = _settings.AutoUpdateEnabled;
@@ -202,7 +202,7 @@ internal sealed class SettingsView : UserControl
             SilentToolConfirmations = _silent.IsOn,
             AutoUpdateEnabled = _updates.IsOn
         };
-        await _pipe.RequestAsync<CommandResult>("settings.update", _settings).ConfigureAwait(false);
+        await _pipe.RequestAsync<CommandResult>("settings.update", _settings);
         if (showNotice)
         {
             _notice("Settings saved", "Configuration updated.", InfoBarSeverity.Success);

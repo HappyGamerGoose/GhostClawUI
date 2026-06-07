@@ -32,7 +32,7 @@
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\**\*.*"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Content Include="..\..\artifacts\service\**\*.*" Link="Service\%(RecursiveDir)%(Filename)%(Extension)" Condition="Exists('..\..\artifacts\service')" />
-    <Content Include="..\..\artifacts\payload.zip" Link="GhostClawPayload\payload.zip" Condition="Exists('..\..\artifacts\payload.zip')" />
+    <Content Include="..\..\artifacts\payload3.zip" Link="GhostClawPayload\payload.zip" Condition="Exists('..\..\artifacts\payload3.zip')"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
   </ItemGroup>
 
   <ItemGroup>

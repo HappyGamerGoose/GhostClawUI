@@ -65,7 +65,7 @@ internal sealed partial class ChatView
         {
             _pollingTimer = DispatcherQueue.CreateTimer();
             _pollingTimer.Interval = TimeSpan.FromMilliseconds(800);
-            _pollingTimerHandler ??= async (_, _) => await PollActiveTracesTickAsync().ConfigureAwait(false);
+            _pollingTimerHandler ??= async (_, _) => await PollActiveTracesTickAsync();
             _pollingTimer.Tick += _pollingTimerHandler;
         }
 
@@ -109,7 +109,7 @@ internal sealed partial class ChatView
 
         try
         {
-            var active = await _pipe.RequestAsync<ActiveTracesResponse>("chat.activeTraces", new SimpleIdRequest(_conversationId)).ConfigureAwait(false);
+            var active = await _pipe.RequestAsync<ActiveTracesResponse>("chat.activeTraces", new SimpleIdRequest(_conversationId));
             if (!_isPollingActive)
             {
                 return;

@@ -152,7 +152,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
             Foreground = new SolidColorBrush(Colors.White)
         };
         AutomationProperties.SetName(_sendButton, "Send message");
-        _sendButton.Click += async (_, _) => await SendAsync().ConfigureAwait(false);
+        _sendButton.Click += async (_, _) => await SendAsync();
 
         Content = Build();
         Unloaded += (s, e) => StopPollingActiveTraces();
@@ -161,9 +161,22 @@ internal sealed partial class ChatView : UserControl, IDisposable
 
     private async Task LoadAsync()
     {
+        for (int retry = 0; retry < 5; retry++)
+        {
+            try
+            {
+                _providerProfiles = await _pipe.RequestAsync<IReadOnlyList<ProviderProfile>>("providers.list") ?? Array.Empty<ProviderProfile>();
+                break;
+            }
+            catch
+            {
+                if (retry == 4) throw;
+                await Task.Delay(1000);
+            }
+        }
+
         try
         {
-            _providerProfiles = await _pipe.RequestAsync<IReadOnlyList<ProviderProfile>>("providers.list").ConfigureAwait(false) ?? Array.Empty<ProviderProfile>();
             _providers.ItemsSource = _providerProfiles;
             _providers.DisplayMemberPath = nameof(ProviderProfile.Name);
 
@@ -189,7 +202,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
                 return;
             }
 
-            var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId)).ConfigureAwait(false);
+            var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId));
             if (conversation is null)
             {
                 _headerTitle.Text = "New Conversation";
@@ -199,7 +212,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
 
             _conversationId = conversation.Summary.Id;
             _headerTitle.Text = conversation.Summary.Title;
-            await _conversationChanged(conversation.Summary.Id).ConfigureAwait(false);
+            await _conversationChanged(conversation.Summary.Id);
             DrawMessages(conversation.Messages);
 
             var lastMessageWithModel = conversation.Messages
@@ -211,7 +224,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
 
             try
             {
-                var active = await _pipe.RequestAsync<ActiveTracesResponse>("chat.activeTraces", new SimpleIdRequest(_conversationId)).ConfigureAwait(false);
+                var active = await _pipe.RequestAsync<ActiveTracesResponse>("chat.activeTraces", new SimpleIdRequest(_conversationId));
                 if (active != null && active.IsRunning)
                 {
                     StartPollingActiveTraces();
@@ -225,7 +238,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
         catch (Exception ex)
         {
             _headerTitle.Text = "Connection Error";
-            _notice("Chat unavailable", Explain(ex), InfoBarSeverity.Warning);
+            _notice("Chat unavailable", $"Failed to load chat data: {ex.Message}", InfoBarSeverity.Warning);
             DrawEmptyState("Service connection unavailable.");
         }
     }
@@ -284,7 +297,22 @@ internal sealed partial class ChatView : UserControl, IDisposable
         if (!string.IsNullOrEmpty(modelCode))
         {
             ModelClassifier.Resolve(modelCode, out var brand, out var resolvedFriendlyName);
-            var name = ModelClassifier.FormatFriendlyName(resolvedFriendlyName);
+            var name = resolvedFriendlyName;
+            
+            if (_providers.SelectedItem is ProviderProfile provider)
+            {
+                var fullModelString = provider.Models.FirstOrDefault(m => m == modelCode || m.StartsWith(modelCode + "|"));
+                if (fullModelString != null)
+                {
+                    var parts = fullModelString.Split('|', 2);
+                    if (parts.Length > 1)
+                    {
+                        name = parts[1].Trim();
+                    }
+                }
+            }
+
+            name = ModelClassifier.FormatFriendlyName(name);
             _headerModelName.Text = name;
             _headerModelLogo.Background = GetNativeBrandBackground(brand);
             _headerModelLogo.Child = GetNativeBrandLogoElement(brand, fontSize: 10);
@@ -723,7 +751,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
     {
         try
         {
-            var bytes = await _logoHttpClient.GetByteArrayAsync(url).ConfigureAwait(false);
+            var bytes = await _logoHttpClient.GetByteArrayAsync(url);
 
             logoContainer.DispatcherQueue.TryEnqueue(async () =>
             {
@@ -851,7 +879,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
     private static async Task<(string? path, string? contentType)> ProcessImageFileAsync(StorageFile file, long size, string contentType)
     {
         // Bypass expensive resizing to provide instant attachment feedback.
-        return await Task.FromResult((file.Path, contentType)).ConfigureAwait(false);
+        return await Task.FromResult((file.Path, contentType));
     }
 
     private static async Task<string> ResizeImageForProviderAsync(string filePath)
@@ -861,7 +889,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
             var fileInfo = new System.IO.FileInfo(filePath);
             var isOversizedFile = fileInfo.Length > 20 * 1024 * 1024; // > 20 MB
 
-            var bytes = await File.ReadAllBytesAsync(filePath).ConfigureAwait(false);
+            var bytes = await File.ReadAllBytesAsync(filePath);
             using var memoryStream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
             using (var dataWriter = new Windows.Storage.Streams.DataWriter(memoryStream))
             {
@@ -1088,7 +1116,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
     {
         try
         {
-            var skills = await _pipe.RequestAsync<IReadOnlyList<SkillSummary>>("skills.list").ConfigureAwait(false) ?? Array.Empty<SkillSummary>();
+            var skills = await _pipe.RequestAsync<IReadOnlyList<SkillSummary>>("skills.list") ?? Array.Empty<SkillSummary>();
             if (skills.Count == 0)
             {
                 _notice("No Skills Found", "No skill files were located. Add *.md skill files to the skills directory.", InfoBarSeverity.Warning);
@@ -1174,7 +1202,7 @@ internal sealed partial class ChatView : UserControl, IDisposable
                     flyout?.Hide();
                     try
                     {
-                        var result = await _pipe.RequestAsync<CommandResult>("skills.read", new SimpleIdRequest(skillId)).ConfigureAwait(false);
+                        var result = await _pipe.RequestAsync<CommandResult>("skills.read", new SimpleIdRequest(skillId));
                         if (result?.Success == true && !string.IsNullOrWhiteSpace(result.Message))
                         {
                             _injectedSkillContext = result.Message;
@@ -1270,8 +1298,8 @@ internal sealed partial class ChatView : UserControl, IDisposable
         // Pre-fill with themed vector logo
         logoContainer.Child = GetNativeBrandLogoElement(brand, fontSize: 11);
 
-        // Async load original brand logo from web only for non-standard default brands
-        if (brand == "default")
+        // Async load original brand logo from web
+        if (brand == "default" || brand == "xai" || brand == "elevenlabs" || brand == "cohere")
         {
             var logoUrl = $"https://logo.clearbit.com/{domain}?size=128";
             _ = LoadBrandLogoAsync(logoUrl, logoImg, logoContainer, glyph, color, bg);
@@ -1404,14 +1432,8 @@ internal static class ModelClassifier
         brand = "default";
         friendlyName = code;
 
-        // 1. Extract prefix provider if present (e.g. "nvidia/...", "together/...", "groq/...")
-        string cleanCode = code;
-        int slashIdx = lower.IndexOf('/');
-        if (slashIdx != -1 && slashIdx + 1 < code.Length)
-        {
-            cleanCode = code.Substring(slashIdx + 1);
-            lower = cleanCode.ToLowerInvariant();
-        }
+        // 1. Clean the code
+        var cleanCode = code;
 
         // 2. Identify the true architectural family and parent brand
         if (lower.Contains("llama"))
@@ -1454,9 +1476,21 @@ internal static class ModelClassifier
         {
             brand = "minimax";
         }
+        else if (lower.Contains("xai") || lower.Contains("grok"))
+        {
+            brand = "xai";
+        }
+        else if (lower.Contains("elevenlabs") || lower.Contains("eleven"))
+        {
+            brand = "elevenlabs";
+        }
         else if (lower.Contains("solar") || lower.Contains("upstage"))
         {
             brand = "solar";
+        }
+        else if (lower.Contains("cohere") || lower.Contains("command"))
+        {
+            brand = "cohere";
         }
         else if (lower.Contains("nvidia") || lower.Contains("nemotron"))
         {
@@ -1471,12 +1505,10 @@ internal static class ModelClassifier
             brand = "xiaomi";
         }
 
-        // 3. Construct a beautiful friendly name
-        friendlyName = FormatFriendlyName(cleanCode);
+        friendlyName = cleanCode;
 
         // Special mappings for standard models to look stunning
-        if (lower.Contains("llama-4-maverick")) friendlyName = "Llama 4 Maverick";
-        else if (lower.Contains("llama-3.1-8b") || lower.Contains("llama-3.1-70b") || lower.Contains("llama-3.1-405b")) friendlyName = "Llama 3.1";
+        if (lower.Contains("llama-3.1-8b") || lower.Contains("llama-3.1-70b") || lower.Contains("llama-3.1-405b")) friendlyName = "Llama 3.1";
         else if (lower.Contains("llama-3.2-1b") || lower.Contains("llama-3.2-3b")) friendlyName = "Llama 3.2";
         else if (lower.Contains("llama-3.3-70b")) friendlyName = "Llama 3.3";
         else if (lower.Contains("deepseek-reasoner") || lower.Contains("deepseek-r1")) friendlyName = "DeepSeek R1";
@@ -1508,6 +1540,7 @@ internal static class ModelClassifier
         return cleanCode;
     }
 }
+
 
 
 

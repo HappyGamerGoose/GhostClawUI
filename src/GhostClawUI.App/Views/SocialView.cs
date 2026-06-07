@@ -45,7 +45,7 @@ internal sealed class SocialView : UserControl
         root.HorizontalAlignment = HorizontalAlignment.Center;
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.RowSpacing = 20;
+        root.RowSpacing = 8;
 
         // Header
         var header = new StackPanel { Spacing = 6 };
@@ -61,27 +61,19 @@ internal sealed class SocialView : UserControl
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             },
-            ColumnSpacing = 24
+            ColumnSpacing = 8
         };
 
         // Telegram Card
-        var tgForm = new StackPanel { Spacing = 14 };
+        var tgGrid = new Grid();
+        tgGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        tgGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var tgForm = new StackPanel { Spacing = 8 };
         tgForm.Children.Add(UiKit.Text("Telegram Configuration", 18, Microsoft.UI.Text.FontWeights.SemiBold));
         tgForm.Children.Add(UiKit.Muted("Setup credentials for incoming Telegram messages.", 12));
-
         tgForm.Children.Add(Labeled("Bot Token", _botToken));
         tgForm.Children.Add(Labeled("Authorized Chat ID", _chatId));
-        tgForm.Children.Add(_telegramEnabled);
-
-        var tgButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Margin = new Thickness(0, 10, 0, 0) };
-        tgButtons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveTelegramAsync().ConfigureAwait(false)));
-        tgButtons.Children.Add(UiKit.Button("Refresh Status", Symbol.Sync, async (_, _) => await RefreshTelegramStatusAsync().ConfigureAwait(false)));
-        tgForm.Children.Add(tgButtons);
-
-        var tgStatusRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
-        tgStatusRow.Children.Add(_telegramStatusBadge);
-        tgStatusRow.Children.Add(_telegramStatusText);
-        tgForm.Children.Add(tgStatusRow);
 
         var tgGuide = new StackPanel { Spacing = 8, Margin = new Thickness(0, 0, 0, 8) };
         tgGuide.Children.Add(Bullet("1. Create a bot using Telegram's @BotFather and copy the Bot Token."));
@@ -90,37 +82,65 @@ internal sealed class SocialView : UserControl
         var tgExpander = new Expander
         {
             Header = "Setup Instructions",
-            Content = tgGuide,
+            Content = new ScrollViewer { Content = tgGuide, MaxHeight = 150, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Margin = new Thickness(0, 16, 0, 0)
         };
         tgForm.Children.Add(tgExpander);
 
-        var tgCard = UiKit.Card(tgForm);
-        tgCard.VerticalAlignment = VerticalAlignment.Top;
+        var tgFooter = new StackPanel { Spacing = 12, Margin = new Thickness(0, 16, 0, 0) };
+        var tgButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        tgButtons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveTelegramAsync()));
+        tgButtons.Children.Add(UiKit.Button("Refresh", Symbol.Sync, async (_, _) => await RefreshTelegramStatusAsync()));
+        tgFooter.Children.Add(tgButtons);
+        
+        var tgStatusRow = new Grid();
+        tgStatusRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        tgStatusRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        
+        _telegramEnabled.Margin = new Thickness(0);
+        Grid.SetColumn(_telegramEnabled, 0);
+        tgStatusRow.Children.Add(_telegramEnabled);
+        
+        var tgStatusIndicators = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+        tgStatusIndicators.Children.Add(_telegramStatusBadge);
+        tgStatusIndicators.Children.Add(_telegramStatusText);
+        Grid.SetColumn(tgStatusIndicators, 1);
+        tgStatusRow.Children.Add(tgStatusIndicators);
+        
+        tgFooter.Children.Add(tgStatusRow);
+
+        Grid.SetRow(tgForm, 0);
+        Grid.SetRow(tgFooter, 1);
+        tgGrid.Children.Add(tgForm);
+        tgGrid.Children.Add(tgFooter);
+
+        var tgCard = UiKit.Card(tgGrid);
+        tgCard.HorizontalAlignment = HorizontalAlignment.Stretch;
+        tgCard.VerticalAlignment = VerticalAlignment.Stretch;
         Grid.SetColumn(tgCard, 0);
         body.Children.Add(tgCard);
 
         // WhatsApp Card
-        var waForm = new StackPanel { Spacing = 14 };
+        var waGrid = new Grid();
+        waGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        waGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        
+        var waForm = new StackPanel { Spacing = 6 }; // tight spacing
         waForm.Children.Add(UiKit.Text("WhatsApp Cloud API Configuration", 18, Microsoft.UI.Text.FontWeights.SemiBold));
         waForm.Children.Add(UiKit.Muted("Setup local webhook for Meta WhatsApp Business API.", 12));
 
-        waForm.Children.Add(Labeled("Access Token", _waAccessToken));
-        waForm.Children.Add(Labeled("Phone Number ID", _waPhoneId));
-        waForm.Children.Add(Labeled("Webhook Verify Token", _waVerifyToken));
-        waForm.Children.Add(Labeled("Local Webhook Port", _waWebhookPort));
-        waForm.Children.Add(_waEnabled);
-
-        var waButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Margin = new Thickness(0, 10, 0, 0) };
-        waButtons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveWhatsAppAsync().ConfigureAwait(false)));
-        waButtons.Children.Add(UiKit.Button("Refresh Status", Symbol.Sync, async (_, _) => await RefreshWhatsAppStatusAsync().ConfigureAwait(false)));
-        waForm.Children.Add(waButtons);
-
-        var waStatusRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
-        waStatusRow.Children.Add(_waStatusBadge);
-        waStatusRow.Children.Add(_waStatusText);
-        waForm.Children.Add(waStatusRow);
+        var waCreds = new StackPanel { Spacing = 6, Margin = new Thickness(0, 8, 0, 0) };
+        waCreds.Children.Add(UiKit.Text("Credentials", 14, Microsoft.UI.Text.FontWeights.SemiBold));
+        waCreds.Children.Add(Labeled("Access Token", _waAccessToken));
+        waCreds.Children.Add(Labeled("Phone Number ID", _waPhoneId));
+        waForm.Children.Add(waCreds);
+        
+        var waWebhook = new StackPanel { Spacing = 6, Margin = new Thickness(0, 12, 0, 0) };
+        waWebhook.Children.Add(UiKit.Text("Webhook Setup", 14, Microsoft.UI.Text.FontWeights.SemiBold));
+        waWebhook.Children.Add(Labeled("Webhook Verify Token", _waVerifyToken));
+        waWebhook.Children.Add(Labeled("Local Webhook Port", _waWebhookPort));
+        waForm.Children.Add(waWebhook);
 
         var waGuide = new StackPanel { Spacing = 8, Margin = new Thickness(0, 0, 0, 8) };
         waGuide.Children.Add(Bullet("1. Create an app in the Meta Developer Portal and add WhatsApp."));
@@ -130,14 +150,42 @@ internal sealed class SocialView : UserControl
         var waExpander = new Expander
         {
             Header = "Setup Instructions",
-            Content = waGuide,
+            Content = new ScrollViewer { Content = waGuide, MaxHeight = 150, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Margin = new Thickness(0, 16, 0, 0)
         };
         waForm.Children.Add(waExpander);
 
-        var waCard = UiKit.Card(waForm);
-        waCard.VerticalAlignment = VerticalAlignment.Top;
+        var waFooter = new StackPanel { Spacing = 12, Margin = new Thickness(0, 16, 0, 0) };
+        var waButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        waButtons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveWhatsAppAsync()));
+        waButtons.Children.Add(UiKit.Button("Refresh", Symbol.Sync, async (_, _) => await RefreshWhatsAppStatusAsync()));
+        waFooter.Children.Add(waButtons);
+
+        var waStatusRow = new Grid();
+        waStatusRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        waStatusRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        
+        _waEnabled.Margin = new Thickness(0);
+        Grid.SetColumn(_waEnabled, 0);
+        waStatusRow.Children.Add(_waEnabled);
+        
+        var waStatusIndicators = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+        waStatusIndicators.Children.Add(_waStatusBadge);
+        waStatusIndicators.Children.Add(_waStatusText);
+        Grid.SetColumn(waStatusIndicators, 1);
+        waStatusRow.Children.Add(waStatusIndicators);
+        
+        waFooter.Children.Add(waStatusRow);
+
+        Grid.SetRow(waForm, 0);
+        Grid.SetRow(waFooter, 1);
+        waGrid.Children.Add(waForm);
+        waGrid.Children.Add(waFooter);
+
+        var waCard = UiKit.Card(waGrid);
+        waCard.HorizontalAlignment = HorizontalAlignment.Stretch;
+        waCard.VerticalAlignment = VerticalAlignment.Stretch;
         Grid.SetColumn(waCard, 1);
         body.Children.Add(waCard);
 
@@ -156,7 +204,7 @@ internal sealed class SocialView : UserControl
     private static StackPanel Labeled(string label, FrameworkElement element) =>
         new()
         {
-            Spacing = 5,
+            Spacing = 2,
             Children =
             {
                 UiKit.Text(label, 12, Microsoft.UI.Text.FontWeights.SemiBold),
@@ -176,7 +224,7 @@ internal sealed class SocialView : UserControl
     {
         try
         {
-            var tgSettings = await _pipe.RequestAsync<TelegramSettings>("telegram.get").ConfigureAwait(false);
+            var tgSettings = await _pipe.RequestAsync<TelegramSettings>("telegram.get");
             if (tgSettings != null)
             {
                 _botToken.Password = tgSettings.BotToken;
@@ -184,7 +232,7 @@ internal sealed class SocialView : UserControl
                 _telegramEnabled.IsOn = tgSettings.IsEnabled;
             }
 
-            var waSettings = await _pipe.RequestAsync<WhatsAppSettings>("whatsapp.get").ConfigureAwait(false);
+            var waSettings = await _pipe.RequestAsync<WhatsAppSettings>("whatsapp.get");
             if (waSettings != null)
             {
                 _waAccessToken.Password = waSettings.AccessToken;
@@ -194,8 +242,8 @@ internal sealed class SocialView : UserControl
                 _waEnabled.IsOn = waSettings.IsEnabled;
             }
 
-            await RefreshTelegramStatusAsync().ConfigureAwait(false);
-            await RefreshWhatsAppStatusAsync().ConfigureAwait(false);
+            await RefreshTelegramStatusAsync();
+            await RefreshWhatsAppStatusAsync();
         }
         catch (Exception ex)
         {
@@ -208,11 +256,11 @@ internal sealed class SocialView : UserControl
         try
         {
             var settings = new TelegramSettings(_botToken.Password.Trim(), _chatId.Text.Trim(), _telegramEnabled.IsOn);
-            var result = await _pipe.RequestAsync<CommandResult>("telegram.save", settings).ConfigureAwait(false);
+            var result = await _pipe.RequestAsync<CommandResult>("telegram.save", settings);
             if (result != null && result.Success)
             {
                 _notice("Telegram saved", result.Message, InfoBarSeverity.Success);
-                await RefreshTelegramStatusAsync().ConfigureAwait(false);
+                await RefreshTelegramStatusAsync();
             }
             else
             {
@@ -230,11 +278,11 @@ internal sealed class SocialView : UserControl
         try
         {
             var settings = new WhatsAppSettings(_waAccessToken.Password.Trim(), _waPhoneId.Text.Trim(), _waVerifyToken.Password.Trim(), _waWebhookPort.Text.Trim(), _waEnabled.IsOn);
-            var result = await _pipe.RequestAsync<CommandResult>("whatsapp.save", settings).ConfigureAwait(false);
+            var result = await _pipe.RequestAsync<CommandResult>("whatsapp.save", settings);
             if (result != null && result.Success)
             {
                 _notice("WhatsApp saved", result.Message, InfoBarSeverity.Success);
-                await RefreshWhatsAppStatusAsync().ConfigureAwait(false);
+                await RefreshWhatsAppStatusAsync();
             }
             else
             {
@@ -254,7 +302,7 @@ internal sealed class SocialView : UserControl
             _telegramStatusText.Text = "Checking connection status...";
             _telegramStatusBadge.Background = UiKit.BrushFromHex("#64748B");
 
-            var status = await _pipe.RequestAsync<CommandResult>("telegram.status").ConfigureAwait(false);
+            var status = await _pipe.RequestAsync<CommandResult>("telegram.status");
             if (status != null)
             {
                 _telegramStatusText.Text = status.Message;
@@ -263,8 +311,16 @@ internal sealed class SocialView : UserControl
         }
         catch (Exception ex)
         {
-            _telegramStatusText.Text = $"Error: {ex.Message}";
-            _telegramStatusBadge.Background = UiKit.BrushFromHex("#DC2626");
+            if (ex.Message.Contains("Unknown command") || ex.Message.Contains("connection"))
+            {
+                _telegramStatusText.Text = "Service starting...";
+                _telegramStatusBadge.Background = UiKit.BrushFromHex("#EAB308");
+            }
+            else
+            {
+                _telegramStatusText.Text = $"Error: {ex.Message}";
+                _telegramStatusBadge.Background = UiKit.BrushFromHex("#DC2626");
+            }
         }
     }
 
@@ -275,7 +331,7 @@ internal sealed class SocialView : UserControl
             _waStatusText.Text = "Checking connection status...";
             _waStatusBadge.Background = UiKit.BrushFromHex("#64748B");
 
-            var status = await _pipe.RequestAsync<CommandResult>("whatsapp.status").ConfigureAwait(false);
+            var status = await _pipe.RequestAsync<CommandResult>("whatsapp.status");
             if (status != null)
             {
                 _waStatusText.Text = status.Message;
@@ -284,8 +340,16 @@ internal sealed class SocialView : UserControl
         }
         catch (Exception ex)
         {
-            _waStatusText.Text = $"Error: {ex.Message}";
-            _waStatusBadge.Background = UiKit.BrushFromHex("#DC2626");
+            if (ex.Message.Contains("Unknown command") || ex.Message.Contains("connection"))
+            {
+                _waStatusText.Text = "Service starting...";
+                _waStatusBadge.Background = UiKit.BrushFromHex("#EAB308");
+            }
+            else
+            {
+                _waStatusText.Text = $"Error: {ex.Message}";
+                _waStatusBadge.Background = UiKit.BrushFromHex("#DC2626");
+            }
         }
     }
 }

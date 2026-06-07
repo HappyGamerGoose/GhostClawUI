@@ -212,8 +212,17 @@ internal sealed partial class EncryptedStore
 
     private static string? ProtectNullable(string? value) => string.IsNullOrEmpty(value) ? null : Protect(value);
 
-    private static string Unprotect(string value) =>
-        Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(value), Entropy, DataProtectionScope.LocalMachine));
+    private static string Unprotect(string value)
+    {
+        try
+        {
+            return Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(value), Entropy, DataProtectionScope.LocalMachine));
+        }
+        catch
+        {
+            return value;
+        }
+    }
 
     private static string? UnprotectNullable(string? value) => string.IsNullOrEmpty(value) ? null : Unprotect(value);
 }

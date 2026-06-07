@@ -4,6 +4,7 @@ using GhostClawUI.Shared;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 
@@ -14,17 +15,28 @@ internal sealed class AppearanceView : UserControl
     private readonly PipeClient _pipe;
     private readonly Action<AppSettings> _apply;
     private readonly Action<string, string, InfoBarSeverity> _notice;
-    private readonly ComboBox _theme = UiKit.Combo("Theme");
+    
+    private string _themeValue = "System";
+    private readonly StackPanel _themeControl = new() { Orientation = Orientation.Horizontal, Spacing = 4 };
+    private readonly ToggleButton _themeSystemBtn = new() { Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { new FontIcon { Glyph = "\uE7A6", FontSize = 14 }, new TextBlock { Text = "System" } } } };
+    private readonly ToggleButton _themeLightBtn = new() { Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { new FontIcon { Glyph = "\uE706", FontSize = 14 }, new TextBlock { Text = "Light" } } } };
+    private readonly ToggleButton _themeDarkBtn = new() { Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { new FontIcon { Glyph = "\uE708", FontSize = 14 }, new TextBlock { Text = "Dark" } } } };
+
     private readonly ComboBox _font = UiKit.Combo("Font family");
-    private readonly Slider _size = new() { Minimum = 12, Maximum = 22, StepFrequency = 1 };
-    private readonly Slider _lineHeight = new() { Minimum = 1.1, Maximum = 1.8, StepFrequency = 0.05 };
+    private readonly Slider _size = new() { Minimum = 12, Maximum = 22, StepFrequency = 1, Width = 150 };
+    private readonly TextBlock _sizeReadout = UiKit.Text("15px", 12);
+    private readonly Slider _lineHeight = new() { Minimum = 1.1, Maximum = 1.8, StepFrequency = 0.05, Width = 150 };
+    private readonly TextBlock _lineHeightReadout = UiKit.Text("1.35", 12);
+
     private readonly ComboBox _density = UiKit.Combo("Chat density");
     private readonly ComboBox _alignment = UiKit.Combo("Message alignment");
+    
     private readonly DispatcherQueueTimer _saveTimer;
     private readonly Windows.Foundation.TypedEventHandler<DispatcherQueueTimer, object> _saveTimerHandler;
     private string _accent;
     private AppSettings _settings;
     private Border? _chatPreviewContainer;
+    private StackPanel? _swatches;
 
     public AppearanceView(PipeClient pipe, AppSettings settings, Action<AppSettings> apply, Action<string, string, InfoBarSeverity> notice)
     {
@@ -77,118 +89,114 @@ internal sealed class AppearanceView : UserControl
         {
             ColumnDefinitions =
             {
-                new ColumnDefinition { Width = new GridLength(340) },
+                new ColumnDefinition { Width = new GridLength(380) },
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             },
             ColumnSpacing = 24
         };
 
-        var form = new StackPanel { Spacing = 20 };
-        _theme.ItemsSource = new[] { "System", "Light", "Dark" };
-        _font.ItemsSource = new[] { "Segoe UI Variable", "Segoe UI", "Cascadia Code", "Aptos" };
-        _density.ItemsSource = new[] { "Comfortable", "Compact" };
-        _alignment.ItemsSource = new[] { "Split", "Left" };
+        var form = new StackPanel { Spacing = 24 };
 
-        var displayGroup = new StackPanel { Spacing = 12 };
-        displayGroup.Children.Add(Labeled("Theme", _theme));
-        displayGroup.Children.Add(Labeled("Font", _font));
-        displayGroup.Children.Add(Labeled("Font size", _size));
-        form.Children.Add(displayGroup);
+        // Theme & Accent Group
+        var themeGroup = new StackPanel { Spacing = 12 };
+        themeGroup.Children.Add(UiKit.Text("Theme & Accent", 16, Microsoft.UI.Text.FontWeights.SemiBold));
+        
+        _themeSystemBtn.Click += (_, _) => SetTheme("System");
+        _themeLightBtn.Click += (_, _) => SetTheme("Light");
+        _themeDarkBtn.Click += (_, _) => SetTheme("Dark");
+        _themeControl.Children.Add(_themeSystemBtn);
+        _themeControl.Children.Add(_themeLightBtn);
+        _themeControl.Children.Add(_themeDarkBtn);
+        themeGroup.Children.Add(Labeled("Theme", _themeControl));
 
-        var chatGroup = new StackPanel { Spacing = 12 };
-        chatGroup.Children.Add(Labeled("Line height", _lineHeight));
-        chatGroup.Children.Add(Labeled("Density", _density));
-        chatGroup.Children.Add(Labeled("Alignment", _alignment));
-        form.Children.Add(chatGroup);
-
-        var swatchContainer = new StackPanel { Spacing = 8 };
-        swatchContainer.Children.Add(UiKit.Text("Accent Color", 12, Microsoft.UI.Text.FontWeights.SemiBold));
-        var swatches = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        _swatches = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
         foreach (var color in new[] { "#2563EB", "#16A34A", "#DC2626", "#9333EA", "#0891B2" })
         {
-            var swatch = new Border
-            {
-                Width = 28,
-                Height = 28,
-                Background = UiKit.BrushFromHex(color),
-                CornerRadius = new CornerRadius(14), // Circular
-                BorderThickness = new Thickness(2),
-                BorderBrush = _accent == color ? UiKit.AccentBrush : new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                Tag = color
-            };
+            _swatches.Children.Add(CreateSwatch(color));
+        }
+        var customColorBtn = new Button
+        {
+            Content = new FontIcon { Glyph = "\uE710", FontSize = 14 },
+            Width = 32,
+            Height = 32,
+            CornerRadius = new CornerRadius(16),
+            Padding = new Thickness(0)
+        };
+        ToolTipService.SetToolTip(customColorBtn, "Custom Color");
+        customColorBtn.Click += (_, _) => { _accent = "#F59E0B"; UpdateSwatches(); Preview(); QueueSave(); };
+        _swatches.Children.Add(customColorBtn);
 
-            var swatchWrapper = new SwatchBorder
-            {
-                Content = swatch
-            };
+        themeGroup.Children.Add(Labeled("Accent Color", _swatches));
+        form.Children.Add(themeGroup);
 
-            swatchWrapper.PointerEntered += (s, _) =>
+        // Type & Spacing Group
+        var typeGroup = new StackPanel { Spacing = 12 };
+        typeGroup.Children.Add(UiKit.Text("Typography & Spacing", 16, Microsoft.UI.Text.FontWeights.SemiBold));
+        _font.ItemsSource = new[] { "Segoe UI Variable", "Segoe UI", "Cascadia Code", "Aptos" };
+        typeGroup.Children.Add(Labeled("Font", _font));
+
+        _size.ValueChanged += (_, e) => { _sizeReadout.Text = $"{e.NewValue}px"; Preview(); QueueSave(); };
+        var sizeRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        sizeRow.Children.Add(new FontIcon { Glyph = "\uE8D3", FontSize = 10 }); // small A
+        sizeRow.Children.Add(_size);
+        sizeRow.Children.Add(new FontIcon { Glyph = "\uE8D3", FontSize = 18 }); // large A
+        sizeRow.Children.Add(_sizeReadout);
+        typeGroup.Children.Add(Labeled("Font size", sizeRow));
+
+        _lineHeight.ValueChanged += (_, e) => { _lineHeightReadout.Text = $"{e.NewValue:0.00}"; Preview(); QueueSave(); };
+        var lhRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        lhRow.Children.Add(new FontIcon { Glyph = "\uE8D3", FontSize = 10 }); // small A
+        lhRow.Children.Add(_lineHeight);
+        lhRow.Children.Add(new FontIcon { Glyph = "\uE8D3", FontSize = 18 }); // large A
+        lhRow.Children.Add(_lineHeightReadout);
+        typeGroup.Children.Add(Labeled("Line height", lhRow));
+
+        _density.ItemsSource = new[] { "Comfortable", "Compact" };
+        typeGroup.Children.Add(Labeled("Density", _density));
+        form.Children.Add(typeGroup);
+
+        // Layout Group
+        var layoutGroup = new StackPanel { Spacing = 12 };
+        layoutGroup.Children.Add(UiKit.Text("Layout", 16, Microsoft.UI.Text.FontWeights.SemiBold));
+        _alignment.ItemsSource = new[] { "Split", "Left" };
+        layoutGroup.Children.Add(Labeled("Alignment", _alignment));
+        form.Children.Add(layoutGroup);
+
+        // Footer / Reset
+        var resetRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Margin = new Thickness(0, 16, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        var resetBtn = new Button { Content = "Reset to Default" };
+        resetBtn.Click += async (_, _) =>
+        {
+            var dialog = new ContentDialog
             {
-                if (s is SwatchBorder wrapper && wrapper.Content is Border b)
-                {
-                    b.BorderBrush = UiKit.AccentBrush;
-                }
+                Title = "Reset Appearance",
+                Content = "Are you sure you want to revert to the default appearance settings?",
+                PrimaryButtonText = "Reset",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = XamlRoot
             };
-            swatchWrapper.PointerExited += (s, _) =>
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
             {
-                if (s is SwatchBorder wrapper && wrapper.Content is Border b)
-                {
-                    b.BorderBrush = _accent == (b.Tag as string) ? UiKit.AccentBrush : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-                }
-            };
-            swatchWrapper.PointerPressed += (s, _) =>
-            {
-                _accent = color;
+                _accent = "#2563EB";
+                SetTheme("System");
+                _font.SelectedItem = "Segoe UI Variable";
+                _size.Value = 15;
+                _lineHeight.Value = 1.35;
+                _density.SelectedItem = "Comfortable";
+                _alignment.SelectedItem = "Split";
+                UpdateSwatches();
                 Preview();
                 QueueSave();
-
-                foreach (var child in swatches.Children)
-                {
-                    if (child is SwatchBorder wrapper && wrapper.Content is Border b)
-                    {
-                        var tagHex = b.Tag as string;
-                        b.BorderBrush = _accent == tagHex ? UiKit.AccentBrush : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-                    }
-                }
-            };
-            swatches.Children.Add(swatchWrapper);
-        }
-        swatchContainer.Children.Add(swatches);
-        form.Children.Add(swatchContainer);
-
-        var resetBtn = new Button
-        {
-            Content = "Reset to Default",
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(0, 8, 0, 0)
-        };
-        resetBtn.Click += (_, _) =>
-        {
-            _accent = "#2563EB";
-            _theme.SelectedItem = "System";
-            _font.SelectedItem = "Segoe UI Variable";
-            _size.Value = 15;
-            _lineHeight.Value = 1.35;
-            _density.SelectedItem = "Comfortable";
-            _alignment.SelectedItem = "Split";
-
-            foreach (var child in swatches.Children)
-            {
-                if (child is SwatchBorder wrapper && wrapper.Content is Border b)
-                {
-                    var tagHex = b.Tag as string;
-                    b.BorderBrush = _accent == tagHex ? UiKit.AccentBrush : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-                }
             }
-
-            Preview();
-            QueueSave();
         };
-        form.Children.Add(resetBtn);
-
+        resetRow.Children.Add(resetBtn);
         var autosave = UiKit.Text("Autosaves as you change it", 12);
         autosave.Foreground = UiKit.QuietTextBrush;
-        form.Children.Add(autosave);
+        autosave.VerticalAlignment = VerticalAlignment.Center;
+        resetRow.Children.Add(autosave);
+        form.Children.Add(resetRow);
+
         body.Children.Add(UiKit.Card(form));
 
         var preview = new StackPanel { Spacing = 12 };
@@ -204,18 +212,92 @@ internal sealed class AppearanceView : UserControl
         return root;
     }
 
+    private SwatchBorder CreateSwatch(string color)
+    {
+        var checkIcon = new FontIcon
+        {
+            Glyph = "\uE73E",
+            FontSize = 12,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
+            Visibility = _accent == color ? Visibility.Visible : Visibility.Collapsed
+        };
+
+        var swatch = new Border
+        {
+            Width = 32,
+            Height = 32,
+            Background = UiKit.BrushFromHex(color),
+            CornerRadius = new CornerRadius(16),
+            BorderThickness = new Thickness(2),
+            BorderBrush = _accent == color ? UiKit.AccentBrush : new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            Tag = color,
+            Child = checkIcon
+        };
+
+        var swatchWrapper = new SwatchBorder { Content = swatch };
+        ToolTipService.SetToolTip(swatchWrapper, color);
+
+        swatchWrapper.PointerEntered += (s, _) =>
+        {
+            if (s is SwatchBorder wrapper && wrapper.Content is Border b)
+                b.BorderBrush = UiKit.AccentBrush;
+        };
+        swatchWrapper.PointerExited += (s, _) =>
+        {
+            if (s is SwatchBorder wrapper && wrapper.Content is Border b)
+                b.BorderBrush = _accent == (b.Tag as string) ? UiKit.AccentBrush : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        };
+        swatchWrapper.PointerPressed += (s, _) =>
+        {
+            _accent = color;
+            UpdateSwatches();
+            Preview();
+            QueueSave();
+        };
+
+        return swatchWrapper;
+    }
+
+    private void UpdateSwatches()
+    {
+        if (_swatches == null) return;
+        foreach (var child in _swatches.Children)
+        {
+            if (child is SwatchBorder wrapper && wrapper.Content is Border b)
+            {
+                var tagHex = b.Tag as string;
+                if (tagHex != null)
+                {
+                    b.BorderBrush = _accent == tagHex ? UiKit.AccentBrush : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+                    if (b.Child is FontIcon icon)
+                    {
+                        icon.Visibility = _accent == tagHex ? Visibility.Visible : Visibility.Collapsed;
+                    }
+                }
+            }
+        }
+    }
+
+    private void SetTheme(string theme)
+    {
+        _themeValue = theme;
+        _themeSystemBtn.IsChecked = theme == "System";
+        _themeLightBtn.IsChecked = theme == "Light";
+        _themeDarkBtn.IsChecked = theme == "Dark";
+        Preview();
+        QueueSave();
+    }
+
     private void LoadControls(AppearanceSettings appearance)
     {
-        _theme.SelectedItem = appearance.Theme;
+        SetTheme(appearance.Theme);
         _font.SelectedItem = appearance.FontFamily;
         _size.Value = appearance.FontSize;
         _lineHeight.Value = appearance.LineHeight;
         _density.SelectedItem = appearance.Density;
         _alignment.SelectedItem = appearance.MessageAlignment;
-        _theme.SelectionChanged += (_, _) => { Preview(); QueueSave(); };
+
         _font.SelectionChanged += (_, _) => { Preview(); QueueSave(); };
-        _size.ValueChanged += (_, _) => { Preview(); QueueSave(); };
-        _lineHeight.ValueChanged += (_, _) => { Preview(); QueueSave(); };
         _density.SelectionChanged += (_, _) => { Preview(); QueueSave(); };
         _alignment.SelectionChanged += (_, _) => { Preview(); QueueSave(); };
     }
@@ -249,7 +331,7 @@ internal sealed class AppearanceView : UserControl
     private AppSettings CurrentSettings()
     {
         var appearance = new AppearanceSettings(
-            _theme.SelectedItem as string ?? "System",
+            _themeValue,
             _accent,
             _font.SelectedItem as string ?? "Segoe UI Variable",
             _size.Value,
@@ -264,7 +346,7 @@ internal sealed class AppearanceView : UserControl
     {
         return new StackPanel
         {
-            Spacing = 8,
+            Spacing = 6,
             Children =
             {
                 UiKit.Text(label, 12, Microsoft.UI.Text.FontWeights.SemiBold),
@@ -280,7 +362,10 @@ internal sealed class AppearanceView : UserControl
             ? new SolidColorBrush(Microsoft.UI.Colors.White)
             : (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"];
         var border = UiKit.Card(content);
-        border.HorizontalAlignment = user ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+        
+        bool isSplit = (_alignment.SelectedItem as string) == "Split";
+        border.HorizontalAlignment = (user && isSplit) ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+        
         border.MaxWidth = 340;
         border.Background = user ? UiKit.BrushFromHex(_accent) : (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
         border.BorderBrush = user ? UiKit.BrushFromHex(_accent) : (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"];
@@ -374,6 +459,3 @@ internal sealed class SwatchBorder : ContentControl
         ProtectedCursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.Hand);
     }
 }
-
-
-

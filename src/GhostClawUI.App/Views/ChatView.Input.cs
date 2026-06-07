@@ -31,7 +31,7 @@ internal sealed partial class ChatView
     public async Task SendQuickPromptAsync(string text)
     {
         _composer.Text = text;
-        await SendAsync().ConfigureAwait(false);
+        await SendAsync();
     }
 
 
@@ -56,7 +56,7 @@ internal sealed partial class ChatView
                 var files = items.OfType<StorageFile>().ToList();
                 if (files.Count > 0)
                 {
-                    await ProcessStorageFilesAsync(files).ConfigureAwait(false);
+                    await ProcessStorageFilesAsync(files);
                 }
             }
             catch (Exception ex)
@@ -83,7 +83,7 @@ internal sealed partial class ChatView
                 if (files.Count > 0)
                 {
                     e.Handled = true;
-                    await ProcessStorageFilesAsync(files).ConfigureAwait(false);
+                    await ProcessStorageFilesAsync(files);
                 }
             }
             catch (Exception ex)
@@ -103,11 +103,11 @@ internal sealed partial class ChatView
                 using (var fileStream = System.IO.File.Create(tempPath))
                 {
                     using var classicStream = stream.AsStreamForRead();
-                    await classicStream.CopyToAsync(fileStream).ConfigureAwait(false);
+                    await classicStream.CopyToAsync(fileStream);
                 }
 
                 var file = await StorageFile.GetFileFromPathAsync(tempPath);
-                await ProcessStorageFilesAsync(new List<StorageFile> { file }).ConfigureAwait(false);
+                await ProcessStorageFilesAsync(new List<StorageFile> { file });
             }
             catch (Exception ex)
             {
@@ -147,10 +147,10 @@ internal sealed partial class ChatView
                 var contentType = FileTextExtractor.BuildContentType(filePath);
                 var processedImageTask = ProcessImageFileAsync(file, size, contentType);
 
-                await Task.WhenAll(previewTask, processedImageTask).ConfigureAwait(false);
+                await Task.WhenAll(previewTask, processedImageTask);
                 token.ThrowIfCancellationRequested();
 
-                var processed = await processedImageTask.ConfigureAwait(false);
+                var processed = await processedImageTask;
                 var finalPath = string.IsNullOrWhiteSpace(processed.path) ? (file.Path ?? string.Empty) : processed.path;
                 var finalContentType = processed.contentType ?? contentType;
 
@@ -159,7 +159,7 @@ internal sealed partial class ChatView
                     finalPath,
                     finalContentType,
                     size,
-                    await previewTask.ConfigureAwait(false),
+                    await previewTask,
                     null);
             }
             catch (OperationCanceledException)
@@ -187,7 +187,7 @@ internal sealed partial class ChatView
             }
         }).ToList();
 
-        await Task.WhenAll(tasks).ConfigureAwait(false);
+        await Task.WhenAll(tasks);
     }
 
 
@@ -210,7 +210,7 @@ internal sealed partial class ChatView
             var files = await picker.PickMultipleFilesAsync();
             if (files != null && files.Count > 0)
             {
-                await ProcessStorageFilesAsync(files).ConfigureAwait(false);
+                await ProcessStorageFilesAsync(files);
             }
         }
         catch (Exception ex)
@@ -566,7 +566,7 @@ internal sealed partial class ChatView
                 _messages.Children.Clear();
             }
             _messages.Children.Add(MessageRow(optimistic));
-            await ScrollToEndAsync().ConfigureAwait(false);
+            await ScrollToEndAsync();
 
             // Build the content to send — prepend skill context if one was injected
             var contentToSend = text;
@@ -582,7 +582,7 @@ internal sealed partial class ChatView
 
             var request = new ChatSendRequest(conversationId, provider.Id, model, contentToSend, _whisperMode, _settings().Verbosity, processedAttachments, AgentMode: _agentMode);
             StartPollingActiveTraces();
-            var result = await _pipe.RequestAsync<ChatSendResult>("chat.send", request, _chatCts.Token).ConfigureAwait(false);
+            var result = await _pipe.RequestAsync<ChatSendResult>("chat.send", request, _chatCts.Token);
             StopPollingActiveTraces();
 
             if (result is null)
@@ -597,8 +597,8 @@ internal sealed partial class ChatView
 
             _messages.Children.Add(MessageRow(result.AssistantMessage));
             _conversationId = result.AssistantMessage.ConversationId;
-            await _conversationChanged(_conversationId).ConfigureAwait(false);
-            await ScrollToEndAsync().ConfigureAwait(false);
+            await _conversationChanged(_conversationId);
+            await ScrollToEndAsync();
             if (!string.IsNullOrWhiteSpace(result.Error))
             {
                 _notice(result.Queued ? "Queued for reconnect" : "Provider error", result.Error, InfoBarSeverity.Warning);
@@ -608,14 +608,14 @@ internal sealed partial class ChatView
         {
             StopPollingActiveTraces();
             _messages.Children.Add(MessageRow(new ChatMessage(Guid.NewGuid().ToString("N"), conversationId, "assistant", "Generation stopped.", provider.Id, model, "error", DateTimeOffset.UtcNow)));
-            await ScrollToEndAsync().ConfigureAwait(false);
+            await ScrollToEndAsync();
         }
         catch (Exception ex)
         {
             StopPollingActiveTraces();
             _messages.Children.Add(MessageRow(new ChatMessage(Guid.NewGuid().ToString("N"), conversationId, "assistant", Explain(ex), provider.Id, model, "error", DateTimeOffset.UtcNow)));
-            await ScrollToEndAsync().ConfigureAwait(false);
-            _notice("Send failed", Explain(ex), InfoBarSeverity.Error);
+            await ScrollToEndAsync();
+            _notice("Failed to send message", $"An error occurred: {ex.Message}", InfoBarSeverity.Error);
         }
         finally
         {

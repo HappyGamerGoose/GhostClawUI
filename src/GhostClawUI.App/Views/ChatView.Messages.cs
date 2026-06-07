@@ -191,7 +191,7 @@ internal sealed partial class ChatView
                 string? lastUserId = null;
                 try
                 {
-                    var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId ?? string.Empty)).ConfigureAwait(false);
+                    var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId ?? string.Empty));
                     if (conversation is not null)
                     {
                         var lastUser = conversation.Messages.LastOrDefault(m => m.Role.Equals("user", StringComparison.OrdinalIgnoreCase));
@@ -211,13 +211,13 @@ internal sealed partial class ChatView
                     try
                     {
                         // Roll back conversation from this user prompt (inclusive)
-                        await _pipe.RequestAsync<CommandResult>("conversations.deleteMessagesAfter", new DeleteMessagesAfterRequest(_conversationId ?? string.Empty, lastUserId)).ConfigureAwait(false);
+                        await _pipe.RequestAsync<CommandResult>("conversations.deleteMessagesAfter", new DeleteMessagesAfterRequest(_conversationId ?? string.Empty, lastUserId));
 
                         // Immediately reload in the UI to wipe off the old response!
-                        await LoadAsync().ConfigureAwait(false);
+                        await LoadAsync();
 
                         // Resubmit the prompt
-                        await SendQuickPromptAsync(lastUserPrompt).ConfigureAwait(false);
+                        await SendQuickPromptAsync(lastUserPrompt);
                     }
                     catch (Exception ex)
                     {
@@ -300,7 +300,7 @@ internal sealed partial class ChatView
                 string? lastUserId = null;
                 try
                 {
-                    var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId ?? string.Empty)).ConfigureAwait(false);
+                    var conversation = await _pipe.RequestAsync<ConversationDetail>("conversations.get", new SimpleIdRequest(_conversationId ?? string.Empty));
                     if (conversation is not null)
                     {
                         var lastUser = conversation.Messages.LastOrDefault(m => m.Role.Equals("user", StringComparison.OrdinalIgnoreCase));
@@ -320,13 +320,13 @@ internal sealed partial class ChatView
                     try
                     {
                         // Roll back conversation from this user prompt (inclusive)
-                        await _pipe.RequestAsync<CommandResult>("conversations.deleteMessagesAfter", new DeleteMessagesAfterRequest(_conversationId ?? string.Empty, lastUserId)).ConfigureAwait(false);
+                        await _pipe.RequestAsync<CommandResult>("conversations.deleteMessagesAfter", new DeleteMessagesAfterRequest(_conversationId ?? string.Empty, lastUserId));
 
                         // Immediately reload in the UI to wipe off the old response!
-                        await LoadAsync().ConfigureAwait(false);
+                        await LoadAsync();
 
                         // Resubmit the prompt
-                        await SendQuickPromptAsync(lastUserPrompt).ConfigureAwait(false);
+                        await SendQuickPromptAsync(lastUserPrompt);
                     }
                     catch (Exception ex)
                     {
@@ -498,16 +498,16 @@ internal sealed partial class ChatView
                     SelectProviderAndModel(message.ProviderId, message.Model);
 
                     // User prompt edit: Delete this message and subsequent ones, and send new prompt
-                    await _pipe.RequestAsync<CommandResult>("conversations.deleteMessagesAfter", new DeleteMessagesAfterRequest(message.ConversationId, message.Id)).ConfigureAwait(false);
+                    await _pipe.RequestAsync<CommandResult>("conversations.deleteMessagesAfter", new DeleteMessagesAfterRequest(message.ConversationId, message.Id));
                     _composer.Text = newText;
-                    await SendAsync().ConfigureAwait(false);
+                    await SendAsync();
                 }
                 else
                 {
                     // Assistant response edit: Update DB and redraw in place
-                    await _pipe.RequestAsync<CommandResult>("messages.update", new MessageUpdateRequest(message.Id, newText)).ConfigureAwait(false);
+                    await _pipe.RequestAsync<CommandResult>("messages.update", new MessageUpdateRequest(message.Id, newText));
                     _notice("Message Updated", "Assistant response has been updated successfully.", InfoBarSeverity.Success);
-                    await LoadAsync().ConfigureAwait(false);
+                    await LoadAsync();
                 }
             }
             catch (Exception ex)

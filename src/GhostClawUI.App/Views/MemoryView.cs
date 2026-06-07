@@ -53,7 +53,7 @@ internal sealed class MemoryView : UserControl
             Spacing = 8,
             VerticalAlignment = VerticalAlignment.Center
         };
-        actions.Children.Add(UiKit.Button("Refresh", Symbol.Sync, async (_, _) => await LoadAsync().ConfigureAwait(false)));
+        actions.Children.Add(UiKit.Button("Refresh", Symbol.Sync, async (_, _) => await LoadAsync()));
         actions.Children.Add(UiKit.Button("Purge", Symbol.Delete, async (_, _) =>
         {
             var dialog = new ContentDialog
@@ -68,8 +68,8 @@ internal sealed class MemoryView : UserControl
             var res = await dialog.ShowAsync();
             if (res == ContentDialogResult.Primary)
             {
-                await _pipe.RequestAsync<CommandResult>("memory.purge").ConfigureAwait(false);
-                await LoadAsync().ConfigureAwait(false);
+                await _pipe.RequestAsync<CommandResult>("memory.purge");
+                await LoadAsync();
                 _notice("Memory purged", "All persistent facts were deleted.", InfoBarSeverity.Success);
             }
         }));
@@ -87,7 +87,7 @@ internal sealed class MemoryView : UserControl
     {
         try
         {
-            var facts = await _pipe.RequestAsync<IReadOnlyList<MemoryFact>>("memory.list").ConfigureAwait(false) ?? Array.Empty<MemoryFact>();
+            var facts = await _pipe.RequestAsync<IReadOnlyList<MemoryFact>>("memory.list") ?? Array.Empty<MemoryFact>();
             _facts.Children.Clear();
             _subtitle.Text = facts.Count == 0
                 ? "GhostClaw remembers durable facts from normal conversation."
@@ -169,8 +169,8 @@ internal sealed class MemoryView : UserControl
             var res = await dialog.ShowAsync();
             if (res == ContentDialogResult.Primary)
             {
-                await _pipe.RequestAsync<CommandResult>("memory.delete", new SimpleIdRequest(fact.Id)).ConfigureAwait(false);
-                await LoadAsync().ConfigureAwait(false);
+                await _pipe.RequestAsync<CommandResult>("memory.delete", new SimpleIdRequest(fact.Id));
+                await LoadAsync();
                 _notice("Memory deleted", fact.Summary, InfoBarSeverity.Success);
             }
         };

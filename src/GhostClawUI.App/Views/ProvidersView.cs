@@ -4,6 +4,7 @@ using GhostClawUI.Shared;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 namespace GhostClawUI.App.Views;
 
@@ -34,6 +35,7 @@ internal sealed class ProvidersView : UserControl
     private Border? _formCard;
     private Grid? _listView;
     private ScrollViewer? _listScroll;
+    private Grid? _drawerOverlay;
 
     public ProvidersView(PipeClient pipe, CredentialVault vault, Action<string, string, InfoBarSeverity> notice)
     {
@@ -41,8 +43,6 @@ internal sealed class ProvidersView : UserControl
         _vault = vault;
         _notice = notice;
         Content = Build();
-        SizeChanged += OnSizeChanged;
-        Unloaded += (s, e) => SizeChanged -= OnSizeChanged;
         _models.TextChanged += (_, _) =>
         {
             if (!_updatingModelsText)
@@ -82,35 +82,70 @@ internal sealed class ProvidersView : UserControl
         header.Children.Add(UiKit.Muted("Manage your LLM providers, API keys, and model availability.", 14));
         root.Children.Add(header);
 
-        _bodyGrid = new Grid
+        _bodyGrid = new Grid();
+
+        var defaultsBar = new Border
         {
-            ColumnSpacing = 24
+            Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["LayerFillColorDefaultBrush"],
+            BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(0, 0, 0, 16)
         };
-        _bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        _bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(420) });
+        var defaultsStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
+        defaultsStack.Children.Add(new TextBlock { Text = "Global Defaults", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+        _globalDefaultProvider.Width = 200;
+        defaultsStack.Children.Add(_globalDefaultProvider);
+        _globalDefaultModel.Width = 200;
+        defaultsStack.Children.Add(_globalDefaultModel);
+        defaultsBar.Child = defaultsStack;
 
-        var form = new StackPanel { Spacing = 12 };
-
-        var defaultsPanel = new StackPanel { Spacing = 12 };
-        defaultsPanel.Children.Add(UiKit.Text("Global Defaults", 18, Microsoft.UI.Text.FontWeights.SemiBold));
-        defaultsPanel.Children.Add(Labeled("Default Provider", _globalDefaultProvider));
-        defaultsPanel.Children.Add(Labeled("Default Model", _globalDefaultModel));
-        var defaultsCard = UiKit.Card(defaultsPanel);
-        form.Children.Add(defaultsCard);
-
-        var separator = new Border
+        _listView = new Grid
         {
-            Height = 1,
-            Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-            Margin = new Thickness(0, 8, 0, 8)
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            },
+            RowSpacing = 14
         };
-        form.Children.Add(separator);
 
-        form.Children.Add(UiKit.Text("Add New Provider", 20, Microsoft.UI.Text.FontWeights.SemiBold));
-        form.Children.Add(_name);
-        form.Children.Add(_baseUrl);
-        form.Children.Add(_apiKey);
-        form.Children.Add(_models);
+        Grid.SetRow(defaultsBar, 0);
+        _listView.Children.Add(defaultsBar);
+
+        var addBtn = UiKit.PrimaryButton("+ Add provider", Symbol.Add, (_, _) => { ClearForm(); ShowDrawer(); });
+        addBtn.HorizontalAlignment = HorizontalAlignment.Left;
+        Grid.SetRow(addBtn, 1);
+        _listView.Children.Add(addBtn);
+
+        Grid.SetRow(_cards, 2);
+        _listView.Children.Add(_cards);
+
+        _bodyScrollViewer = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollMode = ScrollMode.Enabled,
+            Content = _listView
+        };
+        _bodyGrid.Children.Add(_bodyScrollViewer);
+
+        var form = new StackPanel { Spacing = 16 };
+        var formHeader = new Grid();
+        formHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        formHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        formHeader.Children.Add(UiKit.Text("Provider Configuration", 20, Microsoft.UI.Text.FontWeights.SemiBold));
+        var closeBtn = new Button { Content = new SymbolIcon(Symbol.Cancel), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), BorderThickness = new Thickness(0) };
+        closeBtn.Click += (_, _) => HideDrawer();
+        Grid.SetColumn(closeBtn, 1);
+        formHeader.Children.Add(closeBtn);
+        form.Children.Add(formHeader);
+
+        form.Children.Add(Labeled("Provider name", _name));
+        form.Children.Add(Labeled("Base URL", _baseUrl));
+        form.Children.Add(Labeled("API key", _apiKey));
+        form.Children.Add(Labeled("Manual model codes", _models));
         form.Children.Add(Labeled("Default model", _defaultModel));
         form.Children.Add(UiKit.Text("Models", 12, Microsoft.UI.Text.FontWeights.SemiBold));
 
@@ -127,63 +162,54 @@ internal sealed class ProvidersView : UserControl
         };
         form.Children.Add(modelScroll);
 
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        buttons.Children.Add(UiKit.Button("Fetch", Symbol.Sync, async (_, _) => await ValidateAsync().ConfigureAwait(false)));
-        buttons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveAsync().ConfigureAwait(false)));
-        buttons.Children.Add(UiKit.Button("New", Symbol.Add, (_, _) => ClearForm()));
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };
+        buttons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveAsync()));
+        buttons.Children.Add(UiKit.Button("Fetch Models", Symbol.Sync, async (_, _) => await ValidateAsync()));
         form.Children.Add(buttons);
 
-        var formScroll = new ScrollViewer
+        _formCard = new Border
         {
-            Content = form,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SolidBackgroundFillColorBaseBrush"],
+            BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1, 0, 0, 0),
+            Width = 420,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Padding = new Thickness(24),
+            Child = new ScrollViewer { Content = form, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }
         };
 
-        _formCard = UiKit.Card(formScroll);
-        _formCard.VerticalAlignment = VerticalAlignment.Stretch;
-        Grid.SetColumn(_formCard, 1);
-        _bodyGrid.Children.Add(_formCard);
+        _drawerOverlay = new Grid { Visibility = Visibility.Collapsed };
+        var dimBackground = new Border { Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(100, 0, 0, 0)) };
+        dimBackground.PointerPressed += (_, _) => HideDrawer();
+        _drawerOverlay.Children.Add(dimBackground);
+        _drawerOverlay.Children.Add(_formCard);
 
-        _listView = new Grid
-        {
-            RowDefinitions =
-            {
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
-            },
-            RowSpacing = 14
-        };
-        var addBtn = UiKit.PrimaryButton("Add Provider", Symbol.Add, (_, _) => ClearForm());
-        _listView.Children.Add(addBtn);
+        var layoutRoot = new Grid();
+        layoutRoot.Children.Add(_bodyGrid);
+        layoutRoot.Children.Add(_drawerOverlay);
 
-        _listScroll = new ScrollViewer
-        {
-            Content = _cards,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
-        };
-        Grid.SetRow(_listScroll, 1);
-        _listView.Children.Add(_listScroll);
+        Grid.SetRow(layoutRoot, 1);
+        root.Children.Add(layoutRoot);
 
-        _bodyGrid.Children.Add(_listView);
-
-        _bodyScrollViewer = new ScrollViewer
-        {
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            VerticalScrollMode = ScrollMode.Enabled
-        };
-
-        Grid.SetRow(_bodyGrid, 1);
-        root.Children.Add(_bodyGrid);
         return root;
     }
 
+    private void ShowDrawer()
+    {
+        if (_drawerOverlay != null) _drawerOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void HideDrawer()
+    {
+        if (_drawerOverlay != null) _drawerOverlay.Visibility = Visibility.Collapsed;
+    }
     private async Task LoadAsync()
     {
         try
         {
             _loadingDefaults = true;
 
-            var providers = await _pipe.RequestAsync<IReadOnlyList<ProviderProfile>>("providers.list").ConfigureAwait(false) ?? Array.Empty<ProviderProfile>();
+            var providers = await _pipe.RequestAsync<IReadOnlyList<ProviderProfile>>("providers.list") ?? Array.Empty<ProviderProfile>();
             _providersList = providers;
 
             _cards.Children.Clear();
@@ -196,7 +222,7 @@ internal sealed class ProvidersView : UserControl
             _globalDefaultProvider.ItemsSource = providers;
             _globalDefaultProvider.DisplayMemberPath = nameof(ProviderProfile.Name);
 
-            var settings = await _pipe.RequestAsync<AppSettings>("settings.get").ConfigureAwait(false);
+            var settings = await _pipe.RequestAsync<AppSettings>("settings.get");
             if (settings != null)
             {
                 var defaultProv = providers.FirstOrDefault(p => p.Id == settings.DefaultProviderId);
@@ -263,7 +289,7 @@ internal sealed class ProvidersView : UserControl
         if (_loadingDefaults) return;
         try
         {
-            var settings = await _pipe.RequestAsync<AppSettings>("settings.get").ConfigureAwait(false);
+            var settings = await _pipe.RequestAsync<AppSettings>("settings.get");
             if (settings != null)
             {
                 var selectedProvider = _globalDefaultProvider.SelectedItem as ProviderProfile;
@@ -274,7 +300,7 @@ internal sealed class ProvidersView : UserControl
                     DefaultProviderId = selectedProvider?.Id,
                     DefaultModelId = selectedModel
                 };
-                await _pipe.RequestAsync<CommandResult>("settings.update", settings).ConfigureAwait(false);
+                await _pipe.RequestAsync<CommandResult>("settings.update", settings);
             }
         }
         catch (Exception ex)
@@ -296,8 +322,24 @@ internal sealed class ProvidersView : UserControl
             ColumnSpacing = 10
         };
         var title = new StackPanel { Spacing = 3 };
-        title.Children.Add(UiKit.Text(provider.Name, 18, Microsoft.UI.Text.FontWeights.SemiBold));
-        title.Children.Add(UiKit.Muted($"{provider.Models.Count} model(s) · default {provider.DefaultModel ?? provider.Models.FirstOrDefault() ?? "none"} · key {(_vault.ReadProviderKey(provider.Id) is null ? "missing" : "stored")}", 12));
+        
+        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        var hasModels = provider.Models.Count > 0;
+        var hasKey = _vault.ReadProviderKey(provider.Id) != null;
+        var statusColor = (hasModels && hasKey) ? "#10B981" : "#64748B";
+        var statusDot = new Border
+        {
+            Width = 10,
+            Height = 10,
+            CornerRadius = new CornerRadius(5),
+            Background = UiKit.BrushFromHex(statusColor),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        titleRow.Children.Add(statusDot);
+        titleRow.Children.Add(UiKit.Text(provider.Name, 18, Microsoft.UI.Text.FontWeights.SemiBold));
+        
+        title.Children.Add(titleRow);
+        title.Children.Add(UiKit.Muted($"{provider.Models.Count} model(s) · default {provider.DefaultModel ?? provider.Models.FirstOrDefault() ?? "none"} · key {(hasKey ? "stored" : "missing")}", 12));
         header.Children.Add(title);
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
@@ -319,10 +361,10 @@ internal sealed class ProvidersView : UserControl
             CornerRadius = new CornerRadius(8)
         };
         AutomationProperties.SetName(heartbeatBtn, $"Test all models for {provider.Name}");
-        heartbeatBtn.Click += async (_, _) => await TestAllProviderModelsAsync(provider).ConfigureAwait(false);
+        heartbeatBtn.Click += async (_, _) => await TestAllProviderModelsAsync(provider);
         buttons.Children.Add(heartbeatBtn);
 
-        buttons.Children.Add(UiKit.Button("Edit", Symbol.Edit, (_, _) => LoadIntoForm(provider)));
+        buttons.Children.Add(UiKit.Button("Edit", Symbol.Edit, (_, _) => { LoadIntoForm(provider); ShowDrawer(); }));
         // Remove button always visible
         var removeBtn = UiKit.Button("Remove", Symbol.Delete, async (_, _) =>
         {
@@ -338,9 +380,9 @@ internal sealed class ProvidersView : UserControl
             var res = await dialog.ShowAsync();
             if (res == ContentDialogResult.Primary)
             {
-                await _pipe.RequestAsync<CommandResult>("providers.remove", new SimpleIdRequest(provider.Id)).ConfigureAwait(false);
+                await _pipe.RequestAsync<CommandResult>("providers.remove", new SimpleIdRequest(provider.Id));
                 _vault.DeleteProviderKey(provider.Id);
-                await LoadAsync().ConfigureAwait(false);
+                await LoadAsync();
                 _notice("Provider removed", provider.Name, InfoBarSeverity.Success);
             }
         });
@@ -360,8 +402,8 @@ internal sealed class ProvidersView : UserControl
             rows.Children.Add(ModelRow(
                 model,
                 statusKey,
-                async (_, _) => await TestSavedModelAsync(provider, model).ConfigureAwait(false),
-                async (_, _) => await RemoveSavedModelAsync(provider, model).ConfigureAwait(false)));
+                async (_, _) => await TestSavedModelAsync(provider, model),
+                async (_, _) => await RemoveSavedModelAsync(provider, model)));
         }
 
         panel.Children.Add(new ScrollViewer
@@ -371,6 +413,8 @@ internal sealed class ProvidersView : UserControl
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         });
         var card = UiKit.Card(panel);
+        card.Shadow = new ThemeShadow();
+        card.Translation = new System.Numerics.Vector3(0, 0, 16);
         return card;
     }
 
@@ -389,7 +433,7 @@ internal sealed class ProvidersView : UserControl
         {
             var result = await _pipe.RequestAsync<ProviderValidationResult>(
                 "providers.validate",
-                new ProviderValidationRequest(_name.Text, _baseUrl.Text, _apiKey.Password, ParseModels(_models.Text))).ConfigureAwait(false);
+                new ProviderValidationRequest(_name.Text, _baseUrl.Text, _apiKey.Password, ParseModels(_models.Text)));
             _validatedModels = result?.Models ?? Array.Empty<string>();
             if (_validatedModels.Count > 0)
             {
@@ -422,14 +466,15 @@ internal sealed class ProvidersView : UserControl
             var defaultModel = _defaultModel.SelectedItem as string ?? models.FirstOrDefault();
             var provider = await _pipe.RequestAsync<ProviderProfile>(
                 "providers.upsert",
-                new ProviderUpsertRequest(_editingId, _name.Text, _baseUrl.Text, models, defaultModel, true)).ConfigureAwait(false);
+                new ProviderUpsertRequest(_editingId, _name.Text, _baseUrl.Text, models, defaultModel, true));
             if (provider is not null)
             {
                 _vault.SaveProviderKey(provider.Id, _apiKey.Password);
             }
 
             ClearForm();
-            await LoadAsync().ConfigureAwait(false);
+            HideDrawer();
+            await LoadAsync();
             _notice("Provider saved", "API key stored in Windows Credential Manager.", InfoBarSeverity.Success);
         }
         catch (Exception ex)
@@ -478,7 +523,7 @@ internal sealed class ProvidersView : UserControl
             _modelRows.Children.Add(ModelRow(
                 model,
                 statusKey,
-                async (_, _) => await TestDraftModelAsync(model).ConfigureAwait(false),
+                async (_, _) => await TestDraftModelAsync(model),
                 (_, _) => RemoveDraftModel(model)));
         }
     }
@@ -503,7 +548,7 @@ internal sealed class ProvidersView : UserControl
         {
             var result = await _pipe.RequestAsync<CommandResult>(
                 "providers.testModel",
-                new ProviderModelTestRequest(string.IsNullOrWhiteSpace(_name.Text) ? "Draft provider" : _name.Text, _baseUrl.Text, _apiKey.Password, code)).ConfigureAwait(false);
+                new ProviderModelTestRequest(string.IsNullOrWhiteSpace(_name.Text) ? "Draft provider" : _name.Text, _baseUrl.Text, _apiKey.Password, code));
 
             var success = result?.Success == true;
             if (_modelStatusIndicators.TryGetValue(statusKey, out container))
@@ -537,7 +582,7 @@ internal sealed class ProvidersView : UserControl
         {
             var result = await _pipe.RequestAsync<CommandResult>(
                 "providers.testModel",
-                new ProviderModelTestRequest(provider.Name, provider.BaseUrl, _vault.ReadProviderKey(provider.Id), code)).ConfigureAwait(false);
+                new ProviderModelTestRequest(provider.Name, provider.BaseUrl, _vault.ReadProviderKey(provider.Id), code));
 
             var success = result?.Success == true;
             if (_modelStatusIndicators.TryGetValue(statusKey, out container))
@@ -579,7 +624,7 @@ internal sealed class ProvidersView : UserControl
                 {
                     var result = await _pipe.RequestAsync<CommandResult>(
                         "providers.testModel",
-                        new ProviderModelTestRequest(provider.Name, provider.BaseUrl, _vault.ReadProviderKey(provider.Id), code)).ConfigureAwait(false);
+                        new ProviderModelTestRequest(provider.Name, provider.BaseUrl, _vault.ReadProviderKey(provider.Id), code));
                     success = result?.Success == true;
                 }
                 catch
@@ -597,7 +642,7 @@ internal sealed class ProvidersView : UserControl
             }));
         }
 
-        await Task.WhenAll(tasks).ConfigureAwait(false);
+        await Task.WhenAll(tasks);
         _notice("Testing complete", $"Concurrently tested all models for {provider.Name}.", InfoBarSeverity.Success);
     }
 
@@ -615,8 +660,8 @@ internal sealed class ProvidersView : UserControl
             : provider.DefaultModel;
         await _pipe.RequestAsync<ProviderProfile>(
             "providers.upsert",
-            new ProviderUpsertRequest(provider.Id, provider.Name, provider.BaseUrl, remaining, defaultModel, provider.IsEnabled)).ConfigureAwait(false);
-        await LoadAsync().ConfigureAwait(false);
+            new ProviderUpsertRequest(provider.Id, provider.Name, provider.BaseUrl, remaining, defaultModel, provider.IsEnabled));
+        await LoadAsync();
         _notice("Model removed", model, InfoBarSeverity.Success);
     }
 
@@ -780,102 +825,4 @@ internal sealed class ProvidersView : UserControl
             .Where(item => item.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
-
-    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        UpdateLayoutForWidth(e.NewSize.Width);
-    }
-
-    private void UpdateLayoutForWidth(double width)
-    {
-        if (_bodyGrid == null || _formCard == null || _listView == null || _listScroll == null || _bodyScrollViewer == null || _rootGrid == null)
-            return;
-
-        if (width < 850)
-        {
-            // Transition list scrolling: let outer ScrollViewer handle it
-            _listScroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-            _listScroll.VerticalScrollMode = ScrollMode.Disabled;
-
-            // Configure single column with 2 rows for stacking
-            if (_bodyGrid.ColumnDefinitions.Count > 1)
-            {
-                _bodyGrid.ColumnDefinitions.Clear();
-                _bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            }
-
-            if (_bodyGrid.RowDefinitions.Count != 2)
-            {
-                _bodyGrid.RowDefinitions.Clear();
-                _bodyGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // List
-                _bodyGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Form Card
-                _bodyGrid.RowSpacing = 24;
-            }
-
-            // Set positions: List in Row 0, Form Card in Row 1
-            Grid.SetRow(_listView, 0);
-            Grid.SetColumn(_listView, 0);
-            Grid.SetRow(_formCard, 1);
-            Grid.SetColumn(_formCard, 0);
-
-            // Wrap _bodyGrid in _bodyScrollViewer if it's not already
-            if (_bodyGrid.Parent != _bodyScrollViewer)
-            {
-                if (_rootGrid.Children.Contains(_bodyGrid))
-                {
-                    _rootGrid.Children.Remove(_bodyGrid);
-                }
-
-                _bodyScrollViewer.Content = _bodyGrid;
-
-                if (!_rootGrid.Children.Contains(_bodyScrollViewer))
-                {
-                    Grid.SetRow(_bodyScrollViewer, 1);
-                    _rootGrid.Children.Add(_bodyScrollViewer);
-                }
-            }
-        }
-        else
-        {
-            // Transition list scrolling: enable list-specific scrollbar
-            _listScroll.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
-            _listScroll.VerticalScrollMode = ScrollMode.Enabled;
-
-            // Configure two columns, clear rows
-            if (_bodyGrid.RowDefinitions.Count > 0)
-            {
-                _bodyGrid.RowDefinitions.Clear();
-            }
-
-            if (_bodyGrid.ColumnDefinitions.Count != 2)
-            {
-                _bodyGrid.ColumnDefinitions.Clear();
-                _bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                _bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(420) });
-            }
-
-            // Set positions: List in Column 0, Form Card in Column 1
-            Grid.SetRow(_listView, 0);
-            Grid.SetColumn(_listView, 0);
-            Grid.SetRow(_formCard, 0);
-            Grid.SetColumn(_formCard, 1);
-
-            // Restore _bodyGrid directly under _rootGrid if it is in _bodyScrollViewer
-            if (_bodyGrid.Parent == _bodyScrollViewer)
-            {
-                _bodyScrollViewer.Content = null;
-
-                if (_rootGrid.Children.Contains(_bodyScrollViewer))
-                {
-                    _rootGrid.Children.Remove(_bodyScrollViewer);
-                }
-
-                if (!_rootGrid.Children.Contains(_bodyGrid))
-                {
-                    Grid.SetRow(_bodyGrid, 1);
-                    _rootGrid.Children.Add(_bodyGrid);
-                }
-            }
-        }
-    }
 }

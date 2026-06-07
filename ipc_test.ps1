@@ -1,7 +1,0 @@
-$pipe = New-Object System.IO.Pipes.NamedPipeClientStream(".", "GhostClawUI.Agent", [System.IO.Pipes.PipeDirection]::InOut)
-$pipe.Connect(2000)
-$writer = New-Object System.IO.StreamWriter($pipe)
-$reader = New-Object System.IO.StreamReader($pipe)
-$writer.WriteLine('{"Type":"request","Command":"settings.get","RequestId":"123","Payload":{"Text":"global_default_provider"}}')
-$writer.Flush()
-$reader.ReadLine()

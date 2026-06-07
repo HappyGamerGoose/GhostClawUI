@@ -35,6 +35,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     private string _currentPage = "Chat";
 
     public static MainWindow? Instance { get; private set; }
+    public bool IsDarkMode => RootHost.ActualTheme == ElementTheme.Dark;
 
     public MainWindow()
     {
@@ -44,6 +45,8 @@ internal sealed partial class MainWindow : Window, IDisposable
         {
             new Microsoft.UI.Xaml.Media.Animation.EntranceThemeTransition { FromHorizontalOffset = 28, FromVerticalOffset = 0 }
         };
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
         Title = "GhostClawUI";
         SystemBackdrop = new MicaBackdrop();
         TrySetWindowIcon();

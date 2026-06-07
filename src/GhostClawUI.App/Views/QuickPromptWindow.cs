@@ -32,7 +32,7 @@ internal sealed class QuickPromptWindow : Window
             var text = _prompt.Text.Trim();
             if (text.Length > 0)
             {
-                await _send(text).ConfigureAwait(false);
+                await _send(text);
             }
             Close();
         }));

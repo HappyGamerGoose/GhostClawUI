@@ -10,7 +10,7 @@
   <Identity
     Name="GhostClawUI"
     Publisher="CN=GhostClawUI Dev"
-    Version="2.1.1.0"
+    Version="2.2.0.0"
     ProcessorArchitecture="x64" />
 
   <mp:PhoneIdentity PhoneProductId="a2731db8-c967-4b4d-9ee6-b782160ce9d8" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>

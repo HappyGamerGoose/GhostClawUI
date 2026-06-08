@@ -115,7 +115,7 @@ internal sealed class ProvidersView : UserControl
         Grid.SetRow(defaultsBar, 0);
         _listView.Children.Add(defaultsBar);
 
-        var addBtn = UiKit.PrimaryButton("+ Add provider", Symbol.Add, (_, _) => { ClearForm(); ShowDrawer(); });
+        var addBtn = UiKit.PrimaryButton("Add provider", Symbol.Add, (_, _) => { ClearForm(); ShowDrawer(); });
         addBtn.HorizontalAlignment = HorizontalAlignment.Left;
         Grid.SetRow(addBtn, 1);
         _listView.Children.Add(addBtn);

@@ -20,10 +20,8 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Grid x:Name="AppTitleBar" Height="40" Background="Transparent" Grid.Row="0" Grid.ColumnSpan="2" />
-
             <!-- Sidebar -->
-            <Border x:Name="_sidebarBorder" Width="306" Padding="18,0,18,18" BorderThickness="0,0,1,0" Grid.Column="0" Grid.Row="1">
+            <Border x:Name="_sidebarBorder" Width="306" Padding="18,40,18,18" BorderThickness="0,0,1,0" Grid.Column="0" Grid.Row="0" Grid.RowSpan="2">
                 <Grid>
                     <!-- Expanded Sidebar -->
                     <Grid x:Name="_expandedSidebar">
@@ -40,7 +38,6 @@
                                     </Border>
                                     <StackPanel Spacing="1" VerticalAlignment="Center">
                                         <TextBlock x:Name="_brandName" Text="GhostClaw" FontSize="16" FontWeight="SemiBold" />
-                                        <TextBlock x:Name="_statusText" Text="Service unknown" FontSize="12" />
                                     </StackPanel>
                                 </StackPanel>
                                 <Button x:Name="_collapseButton" Width="32" Height="32" MinWidth="32" MinHeight="32" CornerRadius="8" BorderThickness="0" Background="Transparent" Grid.Column="1" AutomationProperties.Name="Collapse sidebar">
@@ -84,6 +81,9 @@
                 <StackPanel x:Name="_noticeHost" Margin="20,18,20,0" Grid.Row="0" />
                 <ContentControl x:Name="_content" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Grid.Row="1" />
             </Grid>
+
+            <!-- App Title Bar -->
+            <Grid x:Name="AppTitleBar" Height="40" Background="Transparent" Grid.Row="0" Grid.ColumnSpan="2" />
         </Grid>
     </Grid>
 </Window>

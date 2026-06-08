@@ -79,14 +79,10 @@ internal sealed class SocialView : UserControl
         tgGuide.Children.Add(Bullet("1. Create a bot using Telegram's @BotFather and copy the Bot Token."));
         tgGuide.Children.Add(Bullet("2. Get your Chat ID using @userinfobot."));
         tgGuide.Children.Add(Bullet("3. Paste the Token and Chat ID above, enable the listener, and save."));
-        var tgExpander = new Expander
-        {
-            Header = "Setup Instructions",
-            Content = new ScrollViewer { Content = tgGuide, MaxHeight = 150, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(0, 16, 0, 0)
-        };
-        tgForm.Children.Add(tgExpander);
+        var tgGuideTitle = UiKit.Text("Setup Instructions", 14, Microsoft.UI.Text.FontWeights.SemiBold);
+        tgGuideTitle.Margin = new Thickness(0, 16, 0, 0);
+        tgForm.Children.Add(tgGuideTitle);
+        tgForm.Children.Add(tgGuide);
 
         var tgFooter = new StackPanel { Spacing = 12, Margin = new Thickness(0, 16, 0, 0) };
         var tgButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
@@ -147,14 +143,10 @@ internal sealed class SocialView : UserControl
         waGuide.Children.Add(Bullet("2. Expose your local port (e.g. 5000) using ngrok: `ngrok http 5000`."));
         waGuide.Children.Add(Bullet("3. Configure the Meta Webhook to point to your ngrok URL (`https://your-ngrok.app/webhook/whatsapp`)."));
         waGuide.Children.Add(Bullet("4. Copy the Access Token and Phone ID, set your Verify Token, and save."));
-        var waExpander = new Expander
-        {
-            Header = "Setup Instructions",
-            Content = new ScrollViewer { Content = waGuide, MaxHeight = 150, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(0, 16, 0, 0)
-        };
-        waForm.Children.Add(waExpander);
+        var waGuideTitle = UiKit.Text("Setup Instructions", 14, Microsoft.UI.Text.FontWeights.SemiBold);
+        waGuideTitle.Margin = new Thickness(0, 16, 0, 0);
+        waForm.Children.Add(waGuideTitle);
+        waForm.Children.Add(waGuide);
 
         var waFooter = new StackPanel { Spacing = 12, Margin = new Thickness(0, 16, 0, 0) };
         var waButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
@@ -189,14 +181,8 @@ internal sealed class SocialView : UserControl
         Grid.SetColumn(waCard, 1);
         body.Children.Add(waCard);
 
-        var scroller = new ScrollViewer
-        {
-            Content = body,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
-        };
-        Grid.SetRow(scroller, 1);
-        root.Children.Add(scroller);
+        Grid.SetRow(body, 1);
+        root.Children.Add(body);
 
         return root;
     }

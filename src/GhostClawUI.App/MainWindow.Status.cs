@@ -98,7 +98,6 @@ internal sealed partial class MainWindow
         {
             _lastHealth = await _pipe.RequestAsync<ServiceHealthReport>("health.check").ConfigureAwait(false);
             var status = _lastHealth?.Status;
-            _statusText.Text = status is null ? "Service unavailable" : BuildStatusText(_lastHealth);
             _settingsDot.Background = _lastHealth is { StoreWritable: true, PayloadPresent: true }
                 ? status is { GhostClawRunning: true } ? UiKit.BrushFromHex("#16A34A") : UiKit.BrushFromHex("#F59E0B")
                 : UiKit.BrushFromHex("#DC2626");
@@ -106,7 +105,6 @@ internal sealed partial class MainWindow
         }
         catch
         {
-            _statusText.Text = "Service unavailable";
             _settingsDot.Background = UiKit.BrushFromHex("#DC2626");
             _collapsedSettingsDot.Background = _settingsDot.Background;
         }

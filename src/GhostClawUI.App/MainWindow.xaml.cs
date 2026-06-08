@@ -219,7 +219,6 @@ internal sealed partial class MainWindow : Window, IDisposable
         _workspaceLabel.Foreground = UiKit.SidebarMutedBrush;
         _chatsLabel.Foreground = UiKit.SidebarMutedBrush;
         _brandName.Foreground = UiKit.SidebarTextBrush;
-        _statusText.Foreground = UiKit.SidebarMutedBrush;
         
         _collapseButton.PointerEntered += (s, e) =>
         {

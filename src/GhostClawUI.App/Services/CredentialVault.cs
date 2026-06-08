@@ -1,11 +1,16 @@
 using GhostClawUI.Shared;
-using Windows.Security.Credentials;
+
 
 namespace GhostClawUI.App.Services;
 
 internal sealed class CredentialVault
 {
-    private readonly PasswordVault _vault = new();
+    private readonly PipeClient _pipe;
+
+    public CredentialVault(PipeClient pipe)
+    {
+        _pipe = pipe;
+    }
 
     public void SaveProviderKey(string providerId, string apiKey)
     {
@@ -14,11 +19,7 @@ internal sealed class CredentialVault
             return;
         }
 
-        DeleteProviderKey(providerId);
-        if (!string.IsNullOrWhiteSpace(apiKey))
-        {
-            _vault.Add(new PasswordCredential(Resource(providerId), providerId, apiKey));
-        }
+        _pipe.RequestAsync<CommandResult>("provider.key.save", new ProviderKeySaveRequest(providerId, apiKey)).GetAwaiter().GetResult();
     }
 
     public string? ReadProviderKey(string providerId)
@@ -30,9 +31,9 @@ internal sealed class CredentialVault
 
         try
         {
-            var credential = _vault.Retrieve(Resource(providerId), providerId);
-            credential.RetrievePassword();
-            return credential.Password;
+            var result = _pipe.RequestAsync<SimpleTextRequest>("provider.key.get", new ProviderKeyRequest(providerId)).GetAwaiter().GetResult();
+            var key = result?.Text;
+            return string.IsNullOrWhiteSpace(key) ? null : key;
         }
         catch
         {
@@ -49,17 +50,13 @@ internal sealed class CredentialVault
 
         try
         {
-            var credential = _vault.Retrieve(Resource(providerId), providerId);
-            _vault.Remove(credential);
+            _pipe.RequestAsync<CommandResult>("provider.key.delete", new ProviderKeyRequest(providerId)).GetAwaiter().GetResult();
         }
         catch
         {
             // Missing credentials are fine.
         }
     }
-
-    private static string Resource(string providerId) => $"{GhostClawConstants.CredentialResourcePrefix}.{providerId}";
 }
-
 
 

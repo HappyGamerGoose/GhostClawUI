@@ -27,7 +27,46 @@ internal sealed partial class McpCatalog
 
     public async Task<IReadOnlyList<McpServerDefinition>> RefreshAsync(CancellationToken cancellationToken)
     {
-        return await Task.FromResult(List()).ConfigureAwait(false);
+        var settings = _store.GetSettings();
+        var urls = TrustedRegistryUrls(settings.RegistryUrls);
+        var servers = new List<McpServerDefinition>();
+
+        foreach (var url in urls)
+        {
+            try
+            {
+                var json = await _httpClient.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
+                servers.AddRange(ParseRegistry(url, json));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to fetch registry {url}: {ex.Message}");
+            }
+        }
+
+        foreach (var server in servers)
+        {
+            var existing = _store.ListMcpServers().FirstOrDefault(item => item.Id == server.Id);
+            if (existing is null)
+            {
+                _store.UpsertMcp(server);
+            }
+            else
+            {
+                _store.UpsertMcp(existing with
+                {
+                    Name = server.Name,
+                    Description = server.Description,
+                    Command = server.Command,
+                    Args = server.Args,
+                    Version = server.Version ?? existing.Version,
+                    IconUrl = server.IconUrl ?? existing.IconUrl,
+                    UpdatedAt = DateTimeOffset.UtcNow
+                });
+            }
+        }
+
+        return List();
     }
 
     public async Task<McpSearchResponse> SearchOnlineAsync(string? query, int page, int pageSize, CancellationToken cancellationToken)

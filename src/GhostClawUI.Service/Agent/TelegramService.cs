@@ -184,15 +184,18 @@ internal sealed class TelegramService : BackgroundService
             if (!msgEl.TryGetProperty("chat", out var chatEl)) return;
             chatId = chatEl.GetProperty("id").GetInt64().ToString();
 
-            // Security Check: Unauthorized chats are ignored
-            if (!string.IsNullOrWhiteSpace(settings.ChatId))
+            // Security Check: Unauthorized chats are ignored. Fail closed if not configured.
+            if (string.IsNullOrWhiteSpace(settings.ChatId))
             {
-                var allowedChats = settings.ChatId.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
-                if (allowedChats.Count > 0 && !allowedChats.Contains(chatId))
-                {
-                    _logger.LogWarning("Telegram message from unauthorized chat ID: {ChatId}", chatId);
-                    return;
-                }
+                _logger.LogWarning("Telegram message received, but ChatId allowlist is empty. Ignoring.");
+                return;
+            }
+
+            var allowedChats = settings.ChatId.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
+            if (allowedChats.Count > 0 && !allowedChats.Contains(chatId))
+            {
+                _logger.LogWarning("Telegram message from unauthorized chat ID: {ChatId}", chatId);
+                return;
             }
 
             // Extract text/caption

@@ -123,10 +123,17 @@ internal sealed partial class MainWindow
         }
 
         // Payload missing check removed per user request
-        if (health.Status.RestartCount <= 0)
+        var text = health.Status.State;
+        if (health.Status.RestartCount > 0)
         {
-            return health.Status.State;
+            text += $" · restarts {health.Status.RestartCount}";
         }
-        return $"{health.Status.State} · restarts {health.Status.RestartCount}";
+
+        if (!health.PythonPresent)
+        {
+            text += " · python missing";
+        }
+
+        return text;
     }
 }

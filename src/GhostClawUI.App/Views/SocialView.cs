@@ -41,8 +41,6 @@ internal sealed class SocialView : UserControl
     private UIElement Build()
     {
         var root = UiKit.Page();
-        root.MaxWidth = 1200;
-        root.HorizontalAlignment = HorizontalAlignment.Center;
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowSpacing = 24;
@@ -53,15 +51,9 @@ internal sealed class SocialView : UserControl
         header.Children.Add(UiKit.Muted("Control your autonomous agent remotely via chat integrations.", 14));
         root.Children.Add(header);
 
-        // Body Grid
-        var body = new Grid
+        var body = new StackPanel
         {
-            ColumnDefinitions =
-            {
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-            },
-            ColumnSpacing = 16
+            Spacing = 24
         };
 
         // Telegram Card
@@ -124,7 +116,6 @@ internal sealed class SocialView : UserControl
         tgCard.Padding = new Thickness(24);
         tgCard.HorizontalAlignment = HorizontalAlignment.Stretch;
         tgCard.VerticalAlignment = VerticalAlignment.Stretch;
-        Grid.SetColumn(tgCard, 0);
         body.Children.Add(tgCard);
 
         // WhatsApp Card
@@ -199,7 +190,6 @@ internal sealed class SocialView : UserControl
         waCard.Padding = new Thickness(24);
         waCard.HorizontalAlignment = HorizontalAlignment.Stretch;
         waCard.VerticalAlignment = VerticalAlignment.Stretch;
-        Grid.SetColumn(waCard, 1);
         body.Children.Add(waCard);
 
         var scrollViewer = new ScrollViewer

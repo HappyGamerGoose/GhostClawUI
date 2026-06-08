@@ -133,7 +133,7 @@ internal sealed class BackgroundWorkerService : BackgroundService
 
             if (string.IsNullOrWhiteSpace(model)) return;
 
-            var apiKey = PasswordVaultHelper.ReadProviderKey(defaultProvider.Id);
+            var apiKey = _store.GetProviderKey(defaultProvider.Id);
             if (string.IsNullOrWhiteSpace(apiKey)) return;
 
             var result = await _agentRunner.TryRunAsync(

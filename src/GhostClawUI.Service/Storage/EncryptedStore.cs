@@ -208,15 +208,16 @@ internal sealed partial class EncryptedStore
     }
 
     private static string Protect(string value) =>
-        Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(value), Entropy, DataProtectionScope.LocalMachine));
+        Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(value), Entropy, DataProtectionScope.CurrentUser));
 
     private static string? ProtectNullable(string? value) => string.IsNullOrEmpty(value) ? null : Protect(value);
 
     private static string Unprotect(string value)
     {
+        if (string.IsNullOrWhiteSpace(value)) return value;
         try
         {
-            return Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(value), Entropy, DataProtectionScope.LocalMachine));
+            return Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(value), Entropy, DataProtectionScope.CurrentUser));
         }
         catch
         {

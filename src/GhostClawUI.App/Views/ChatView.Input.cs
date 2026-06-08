@@ -590,15 +590,35 @@ internal sealed partial class ChatView
                 throw new InvalidOperationException("No response received from the background agent service.");
             }
 
-            foreach (var trace in result.Trace)
+            if (result.Trace != null)
             {
-                _messages.Children.Add(Trace(trace));
+                foreach (var trace in result.Trace)
+                {
+                    _messages.Children.Add(Trace(trace));
+                }
             }
 
-            _messages.Children.Add(MessageRow(result.AssistantMessage));
-            _conversationId = result.AssistantMessage.ConversationId;
-            await _conversationChanged(_conversationId);
-            await ScrollToEndAsync();
+            if (result.AssistantMessage != null)
+            {
+                _messages.Children.Add(MessageRow(result.AssistantMessage));
+                _conversationId = result.AssistantMessage.ConversationId;
+                
+                try
+                {
+                    await _conversationChanged(_conversationId);
+                }
+                catch (Exception cvEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error in conversationChanged: {cvEx}");
+                }
+            }
+
+            try
+            {
+                await ScrollToEndAsync();
+            }
+            catch { }
+
             if (!string.IsNullOrWhiteSpace(result.Error))
             {
                 _notice(result.Queued ? "Queued for reconnect" : "Provider error", result.Error, InfoBarSeverity.Warning);

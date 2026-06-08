@@ -280,8 +280,11 @@ internal sealed partial class MainWindow
 
     private void ShowNotice(string title, string message, InfoBarSeverity severity = InfoBarSeverity.Informational)
     {
-        _noticeHost.Children.Clear();
-        _noticeHost.Children.Add(UiKit.Info(title, message, severity));
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _noticeHost.Children.Clear();
+            _noticeHost.Children.Add(UiKit.Info(title, message, severity));
+        });
     }
 
     private void OpenQuickPrompt()

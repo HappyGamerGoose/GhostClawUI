@@ -424,23 +424,6 @@ internal sealed class GhostClawAgentRunner
 
     private static string GetNiceToolName(string name)
     {
-        if (name == "read_file") return "Data Analysis (Read File)";
-        if (name == "write_to_file") return "Data Analysis (Write File)";
-        if (name == "execute_command") return "Terminal Agent (Bash)";
-        if (name == "attempt_completion") return "Planner Agent (Complete)";
-        if (name.StartsWith("mcp__"))
-        {
-            var parts = name.Split("__");
-            if (parts.Length >= 3)
-            {
-                var serverName = parts[1].ToLowerInvariant();
-                if (serverName.Contains("search") || serverName.Contains("browse") || serverName.Contains("web") || serverName.Contains("fetch") || serverName.Contains("chrome"))
-                {
-                    return $"Web Agent ({parts[1]})";
-                }
-                return $"Specialist Agent ({parts[1]})";
-            }
-        }
         return name;
     }
 

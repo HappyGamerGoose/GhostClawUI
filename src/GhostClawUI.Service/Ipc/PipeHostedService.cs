@@ -22,6 +22,11 @@ internal sealed class PipeHostedService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        var tokenPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GhostClawUI", "ipc_token.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(tokenPath)!);
+        var ipcToken = Guid.NewGuid().ToString("N");
+        File.WriteAllText(tokenPath, ipcToken);
+
         while (!stoppingToken.IsCancellationRequested)
         {
 #pragma warning disable CA2000 // Handled in HandleClientAsync background thread
@@ -39,7 +44,7 @@ internal sealed class PipeHostedService : BackgroundService
             try
             {
                 await pipe.WaitForConnectionAsync(stoppingToken).ConfigureAwait(false);
-                _ = Task.Run(() => HandleClientAsync(pipe, stoppingToken), stoppingToken);
+                _ = Task.Run(() => HandleClientAsync(pipe, ipcToken, stoppingToken), stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -64,15 +69,10 @@ internal sealed class PipeHostedService : BackgroundService
             security.AddAccessRule(new PipeAccessRule(currentUser, PipeAccessRights.FullControl, AccessControlType.Allow));
         }
 
-        var allApplicationPackages = new SecurityIdentifier("S-1-15-2-1");
-        var allRestrictedApplicationPackages = new SecurityIdentifier("S-1-15-2-2");
-
-        security.AddAccessRule(new PipeAccessRule(allApplicationPackages, PipeAccessRights.ReadWrite, AccessControlType.Allow));
-        security.AddAccessRule(new PipeAccessRule(allRestrictedApplicationPackages, PipeAccessRights.ReadWrite, AccessControlType.Allow));
         return security;
     }
 
-    private async Task HandleClientAsync(NamedPipeServerStream pipe, CancellationToken cancellationToken)
+    private async Task HandleClientAsync(NamedPipeServerStream pipe, string expectedToken, CancellationToken cancellationToken)
     {
         await using (pipe.ConfigureAwait(false))
         using (var reader = new StreamReader(pipe, Encoding.UTF8, false, 65536, leaveOpen: true))
@@ -92,6 +92,14 @@ internal sealed class PipeHostedService : BackgroundService
                     request = JsonSerializer.Deserialize<PipeEnvelope>(line, PipeJson.Options);
                     if (request is null || request.Type != "request")
                     {
+                        return;
+                    }
+
+                    if (request.AuthToken != expectedToken)
+                    {
+                        _logger.LogWarning("Rejecting IPC connection due to invalid AuthToken.");
+                        var errResp = PipeEnvelope.ErrorResponse(request, "Unauthorized IPC connection.");
+                        await writer.WriteLineAsync(JsonSerializer.Serialize(errResp, PipeJson.Options)).ConfigureAwait(false);
                         return;
                     }
 

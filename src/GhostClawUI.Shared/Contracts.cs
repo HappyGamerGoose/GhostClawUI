@@ -26,7 +26,8 @@ public sealed record PipeEnvelope(
     string CorrelationId,
     JsonNode? Payload = null,
     string? Error = null,
-    DateTimeOffset? CreatedAt = null)
+    DateTimeOffset? CreatedAt = null,
+    string? AuthToken = null)
 {
     public static PipeEnvelope Request<T>(string command, T payload) =>
         new("request", command, Guid.NewGuid().ToString("N"), JsonSerializer.SerializeToNode(payload, PipeJson.Options), null, DateTimeOffset.UtcNow);
@@ -62,6 +63,9 @@ public sealed record ProviderValidationRequest(
     string BaseUrl,
     string? ApiKey,
     IReadOnlyList<string>? ManualModels);
+
+public sealed record ProviderKeyRequest(string ProviderId);
+public sealed record ProviderKeySaveRequest(string ProviderId, string ApiKey);
 
 public sealed record ProviderValidationResult(
     bool Success,
@@ -182,7 +186,8 @@ public sealed record AppSettings(
     string? DefaultProviderId = null,
     string? DefaultModelId = null,
     string? VisionTranslatorProviderId = null,
-    string? VisionTranslatorModel = null);
+    string? VisionTranslatorModel = null,
+    bool EnableUnsandboxedFileGeneration = false);
 
 public sealed record ServiceStatus(
     bool ServiceReady,
@@ -200,6 +205,7 @@ public sealed record ServiceHealthReport(
     bool PayloadPresent,
     bool RuntimeExtracted,
     bool NodePresent,
+    bool PythonPresent,
     bool GhostClawEntryPresent,
     ServiceStatus Status,
     IReadOnlyList<string> Issues,

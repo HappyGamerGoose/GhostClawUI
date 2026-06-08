@@ -21,7 +21,7 @@ namespace GhostClawUI.App;
 internal sealed partial class MainWindow : Window, IDisposable
 {
     private readonly PipeClient _pipe = new();
-    private readonly CredentialVault _vault = new();
+    private readonly CredentialVault _vault;
     private readonly Border _settingsDot = new() { Width = 8, Height = 8, CornerRadius = new CornerRadius(4), Background = UiKit.BrushFromHex("#64748B") };
     private readonly Border _collapsedSettingsDot = new() { Width = 8, Height = 8, CornerRadius = new CornerRadius(4), Background = UiKit.BrushFromHex("#64748B") };
     private readonly Dictionary<string, Border> _navButtons = new(StringComparer.OrdinalIgnoreCase);
@@ -39,6 +39,7 @@ internal sealed partial class MainWindow : Window, IDisposable
 
     public MainWindow()
     {
+        _vault = new CredentialVault(_pipe);
         Instance = this;
         InitializeComponent();
         _content.ContentTransitions = new Microsoft.UI.Xaml.Media.Animation.TransitionCollection

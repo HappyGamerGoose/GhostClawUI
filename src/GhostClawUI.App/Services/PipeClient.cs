@@ -14,13 +14,25 @@ internal sealed class PipeClient
     public async Task<T?> RequestAsync<T>(string command, object? payload = null, CancellationToken cancellationToken = default)
     {
         var payloadNode = payload is null ? null : JsonSerializer.SerializeToNode(payload, PipeJson.Options);
+        string? token = null;
+        try
+        {
+            var tokenPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GhostClawUI", "ipc_token.txt");
+            if (File.Exists(tokenPath))
+            {
+                token = File.ReadAllText(tokenPath);
+            }
+        }
+        catch { }
+
         var requestEnvelope = new PipeEnvelope(
             "request",
             command,
             Guid.NewGuid().ToString("N"),
             payloadNode,
             null,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            token);
 
         var requestJson = JsonSerializer.Serialize(requestEnvelope, PipeJson.Options);
 

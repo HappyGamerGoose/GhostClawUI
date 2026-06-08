@@ -56,8 +56,10 @@ internal sealed class CommandRouter
             "providers.upsert" => PipeEnvelope.Response(request, _store.UpsertProvider(Require<ProviderUpsertRequest>(request))),
             "providers.remove" => PipeEnvelope.Response(request, RemoveProvider(Require<SimpleIdRequest>(request))),
             "providers.validate" => PipeEnvelope.Response(request, await _providerGateway.ValidateAsync(Require<ProviderValidationRequest>(request), cancellationToken).ConfigureAwait(false)),
-            "providers.test" => PipeEnvelope.Response(request, await _providerGateway.ValidateAsync(Require<ProviderValidationRequest>(request), cancellationToken).ConfigureAwait(false)),
-            "providers.testModel" => PipeEnvelope.Response(request, await _providerGateway.TestModelAsync(Require<ProviderModelTestRequest>(request), cancellationToken).ConfigureAwait(false)),
+            "providers.test" => PipeEnvelope.Response(request, await _providerGateway.TestModelAsync(Require<ProviderModelTestRequest>(request), cancellationToken).ConfigureAwait(false)),
+            "provider.key.get" => PipeEnvelope.Response(request, new SimpleTextRequest(_store.GetProviderKey(Require<ProviderKeyRequest>(request).ProviderId) ?? string.Empty)),
+            "provider.key.save" => PipeEnvelope.Response(request, SaveProviderKey(Require<ProviderKeySaveRequest>(request))),
+            "provider.key.delete" => PipeEnvelope.Response(request, DeleteProviderKey(Require<ProviderKeyRequest>(request))),
             "conversations.list" => PipeEnvelope.Response(request, _store.ListConversations(request.ReadPayload<SimpleTextRequest>()?.Text)),
             "conversations.create" => PipeEnvelope.Response(request, _store.GetOrCreateConversation()),
             "conversations.get" => PipeEnvelope.Response(request, _store.GetOrCreateConversation(Require<SimpleIdRequest>(request).Id)),
@@ -155,16 +157,63 @@ internal sealed class CommandRouter
             issues.Add($"GhostClaw entry missing: {entry}");
         }
 
+        bool pythonPresent = false;
+        try
+        {
+            var p = Process.Start(new ProcessStartInfo { FileName = "python", Arguments = "--version", CreateNoWindow = true, UseShellExecute = false });
+            p?.WaitForExit(500);
+            pythonPresent = p?.ExitCode == 0;
+        }
+        catch { }
+        
+        if (!pythonPresent)
+        {
+            try
+            {
+                var p2 = Process.Start(new ProcessStartInfo { FileName = "py", Arguments = "--version", CreateNoWindow = true, UseShellExecute = false });
+                p2?.WaitForExit(500);
+                pythonPresent = p2?.ExitCode == 0;
+            }
+            catch { }
+        }
+
+        if (!pythonPresent)
+        {
+            try
+            {
+                var p3 = Process.Start(new ProcessStartInfo { FileName = "python3", Arguments = "--version", CreateNoWindow = true, UseShellExecute = false });
+                p3?.WaitForExit(500);
+                pythonPresent = p3?.ExitCode == 0;
+            }
+            catch { }
+        }
+
+        if (!pythonPresent)
+        {
+            issues.Add("Python is not installed or not in PATH. File generation features will not work.");
+        }
+
         if (!_supervisor.Status.GhostClawRunning && !string.IsNullOrWhiteSpace(_supervisor.Status.Detail))
         {
             issues.Add(_supervisor.Status.Detail);
         }
 
-        return new ServiceHealthReport(true, storeReadable, storeWritable, payloadPresent, runtimeExtracted, nodePresent, entryPresent, _supervisor.Status, issues.Distinct().ToList(), DateTimeOffset.UtcNow);
+        return new ServiceHealthReport(true, storeReadable, storeWritable, payloadPresent, runtimeExtracted, nodePresent, pythonPresent, entryPresent, _supervisor.Status, issues.Distinct().ToList(), DateTimeOffset.UtcNow);
     }
 
     private async Task<ChatSendResult> SendChatAsync(ChatSendRequest chatRequest, JsonNode? rawPayload, CancellationToken cancellationToken)
     {
+        if (_conversationLocks.Count > 100)
+        {
+            foreach (var kvp in _conversationLocks.ToArray())
+            {
+                if (kvp.Value.CurrentCount == 1)
+                {
+                    _conversationLocks.TryRemove(kvp.Key, out _);
+                }
+            }
+        }
+
         var conversationLock = _conversationLocks.GetOrAdd(chatRequest.ConversationId ?? "", _ => new SemaphoreSlim(1, 1));
         await conversationLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -204,6 +253,14 @@ internal sealed class CommandRouter
             {
                 try
                 {
+                    var uri = new Uri(url);
+                    if (uri.IsLoopback || 
+                        uri.Host == "169.254.169.254" || 
+                        (uri.HostNameType == UriHostNameType.IPv4 && (uri.Host.StartsWith("10.") || uri.Host.StartsWith("192.168.") || uri.Host.StartsWith("172.")))) 
+                    {
+                        continue;
+                    }
+
                     using var response = await client.GetAsync(url, System.Net.Http.HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
                     if (response.IsSuccessStatusCode)
                     {
@@ -212,7 +269,7 @@ internal sealed class CommandRouter
                         {
                             using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
                             using var reader = new System.IO.StreamReader(stream);
-                            var buffer = new char[int.MaxValue / 100]; // Reasonable chunk instead of hardcoded 200k
+                            var buffer = new char[1024 * 512]; // Cap at ~1MB
                             int read = await reader.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
                             var html = new string(buffer, 0, read);
 
@@ -221,8 +278,6 @@ internal sealed class CommandRouter
                             plainText = System.Text.RegularExpressions.Regex.Replace(plainText, "<[^>]+>", " ");
                             plainText = System.Text.RegularExpressions.Regex.Replace(plainText, @"\s+", " ").Trim();
 
-
-                            var uri = new Uri(url);
                             processedAttachments.Add(new ChatAttachment(
                                 uri.Host,
                                 url,
@@ -257,7 +312,7 @@ internal sealed class CommandRouter
             var visionProvider = _store.GetProvider(settings.VisionTranslatorProviderId);
             if (visionProvider != null && visionProvider.IsEnabled)
             {
-                var vApiKey = GhostClawUI.Service.Infrastructure.PasswordVaultHelper.ReadProviderKey(visionProvider.Id) ?? string.Empty;
+                var vApiKey = _store.GetProviderKey(visionProvider.Id) ?? string.Empty;
                 var translatedAttachments = new List<ChatAttachment>();
                 foreach (var attachment in attachments)
                 {
@@ -306,17 +361,7 @@ internal sealed class CommandRouter
         providerContent = AppendFilesystemContext(providerContent);
         var user = _store.AddMessage(conversationId, "user", userContent, chatRequest.ProviderId, chatRequest.Model, "message", BuildAttachmentMetadata(attachments));
 
-        McpToolSearchResult? searchResult = null;
         var userPrompt = chatRequest.Content ?? string.Empty;
-        if (NeedsFreshInformation(userPrompt))
-        {
-            _mcpCatalog.EnsureGhostClawSettings();
-            searchResult = await _mcpToolRunner.TrySearchAsync(userPrompt, _store.ListMcpServers(), cancellationToken).ConfigureAwait(false);
-            if (searchResult is not null)
-            {
-                providerContent = AppendSearchContext(providerContent, searchResult);
-            }
-        }
 
         var facts = _store.SearchMemory(basePrompt);
         var trace = string.Equals(chatRequest.Verbosity, "Verbose", StringComparison.OrdinalIgnoreCase)
@@ -326,10 +371,6 @@ internal sealed class CommandRouter
                 new("Tools", "MCP tools are synchronized into GhostClaw settings.json for agent runs.", "ready")
             }
             : new List<AgentTraceCard>();
-        if (searchResult is not null && string.Equals(chatRequest.Verbosity, "Verbose", StringComparison.OrdinalIgnoreCase))
-        {
-            trace.Add(new AgentTraceCard("Search", $"Ran {searchResult.ToolName} through {searchResult.ServerName}.", "done"));
-        }
 
         if (provider is null)
         {
@@ -337,12 +378,12 @@ internal sealed class CommandRouter
             return new ChatSendResult(error, trace, facts, false, error.Content);
         }
 
-        var apiKey = GhostClawUI.Service.Infrastructure.PasswordVaultHelper.ReadProviderKey(provider.Id) ?? string.Empty;
+        var apiKey = _store.GetProviderKey(provider.Id) ?? string.Empty;
 
         // Save user message memory background extraction
         StoreRememberedFacts(userContent, provider, chatRequest.Model, apiKey);
 
-        var shouldTryAgent = chatRequest.AgentMode || ShouldTryGhostClawAgent(provider, userPrompt);
+        var shouldTryAgent = chatRequest.AgentMode;
         if (shouldTryAgent)
         {
             if (string.IsNullOrWhiteSpace(apiKey))
@@ -453,7 +494,7 @@ internal sealed class CommandRouter
                     var fallbackModel = fallbackProvider.DefaultModel ?? fallbackProvider.Models.FirstOrDefault();
                     if (string.IsNullOrEmpty(fallbackModel)) continue;
 
-                    var fallbackApiKey = PasswordVaultHelper.ReadProviderKey(fallbackProvider.Id) ?? string.Empty;
+                    var fallbackApiKey = _store.GetProviderKey(fallbackProvider.Id) ?? string.Empty;
                     trace.Add(new AgentTraceCard("Failover", $"Attempting failover to provider {fallbackProvider.Name} ({fallbackModel})...", "running"));
 
                     var (fbContent, fbError) = await _providerGateway.SendChatAsync(
@@ -627,13 +668,6 @@ internal sealed class CommandRouter
             ? "installed_mcp_tools: none"
             : "installed_mcp_tools: " + string.Join(", ", installedTools.Select(server => server.Name)));
 
-        if (NeedsFreshInformation(userPrompt))
-        {
-            var searchTools = installedTools.Where(IsSearchServer).Select(server => server.Name).ToList();
-            builder.AppendLine(searchTools.Count == 0
-                ? "search_policy: The user appears to need current information, but no live search MCP is installed. Do not fabricate current facts; say search needs Exa, Brave Search, Playwright, or another web/search MCP."
-                : "search_policy: The user appears to need current information. Use the installed search/browser MCP tools when running through GhostClaw agent mode: " + string.Join(", ", searchTools) + ".");
-        }
 
         builder.AppendLine("tool_output_policy: Never show raw tool-call JSON/XML/function arguments. Summarize tool outcomes naturally.");
         builder.AppendLine("file_generation_policy: You have native capability to generate and attach files (PowerPoint, Word, Excel, PDF, images, etc.). To generate a file, you MUST write the complete, self-contained Python script to create that file, and wrap it inside a ```python ... ``` code block in your response. The host platform will automatically execute your code block in the background, attach the created file to your chat bubble, and present a download button. NEVER ask the user for permission to generate a file. If your task involves creating a file, write the complete python code block immediately! NEVER mention 'Code Sandbox' or say you cannot produce artifacts. CRITICAL RULES: (1) NEVER use absolute file paths (like /mnt/data/ or C:/...). ALWAYS save files to the current directory (e.g. filename.pptx). (2) Never include un-commented decorative headers, text lines, or separators (such as '── Colour palette ──') inside python blocks. Every line in a ```python block must be valid, executable Python syntax. Comment out decorative dividers using '#'. (3) For ReportLab alignment: import standard alignment constants with underscores (e.g. TA_CENTER, TA_JUSTIFY) from 'reportlab.lib.enums'. Never use TACENTER or TAJUSTIFY. (4) For python-pptx presentations: never use non-existent methods like '.fit_text()' or '.autofit()'. Use standard layout/sizing APIs.");
@@ -671,17 +705,6 @@ internal sealed class CommandRouter
         return builder.ToString();
     }
 
-    private static bool NeedsFreshInformation(string text)
-    {
-        var lower = text.ToLowerInvariant();
-        return new[]
-        {
-            "latest", "today", "current", "right now", "recent", "news", "search", "look up", "lookup",
-            "browse", "web", "internet", "online", "website", "site", "source", "cite", "research",
-            "find", "compare", "price", "schedule", "weather", "version", "release", "changelog",
-            "github", "npm", "registry", "store", "this week", "this month", "2026"
-        }.Any(lower.Contains);
-    }
 
     private static bool IsSearchServer(McpServerDefinition server)
     {
@@ -689,16 +712,6 @@ internal sealed class CommandRouter
         return text.Contains("search") || text.Contains("exa") || text.Contains("brave") || text.Contains("browser") || text.Contains("playwright") || text.Contains("web");
     }
 
-    private static bool ShouldTryGhostClawAgent(ProviderProfile provider, string prompt)
-    {
-        var lower = prompt.ToLowerInvariant();
-        return new[]
-        {
-            "folder", "directory", "powershell", "script", "terminal", "mcp", "tool", "agent", "automate",
-            "create file", "edit file", "delete file", "rename file", "move file", "write file",
-            "create a file", "edit a file", "delete a file"
-        }.Any(lower.Contains);
-    }
 
     private static bool IsAnthropicProvider(ProviderProfile provider)
     {
@@ -714,12 +727,21 @@ internal sealed class CommandRouter
                id.Contains("claude", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static DateTimeOffset _lastMemoryExtraction = DateTimeOffset.MinValue;
+
     private void StoreRememberedFacts(string text, ProviderProfile provider, string model, string apiKey)
     {
         if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(apiKey) || provider == null) return;
 
         var lower = text.ToLower();
         if (text.Length < 15 && !lower.Contains("remember") && !lower.Contains("pref")) return;
+
+        // Debounce memory extraction to save tokens
+        if (DateTimeOffset.UtcNow - _lastMemoryExtraction < TimeSpan.FromMinutes(2) && !lower.Contains("remember"))
+        {
+            return;
+        }
+        _lastMemoryExtraction = DateTimeOffset.UtcNow;
 
         _ = Task.Run(async () =>
         {
@@ -913,6 +935,18 @@ Message to analyze:
     {
         _store.UpsertScheduledTask(Require<ScheduledTask>(request));
         return new CommandResult(true, "Task saved.");
+    }
+
+    private CommandResult SaveProviderKey(ProviderKeySaveRequest request)
+    {
+        _store.SaveProviderKey(request.ProviderId, request.ApiKey);
+        return new CommandResult(true, "Key saved.");
+    }
+
+    private CommandResult DeleteProviderKey(ProviderKeyRequest request)
+    {
+        _store.DeleteProviderKey(request.ProviderId);
+        return new CommandResult(true, "Key deleted.");
     }
 
     private CommandResult SaveTelegramSettingsHelper(TelegramSettings settings)
@@ -1281,9 +1315,23 @@ Message to analyze:
             var code = match.Groups[1].Value;
             if (code.Contains(".save(") || code.Contains("open(") || code.Contains("write(") || code.Contains(".build(") || code.Contains(".close(") || code.Contains("to_csv(") || code.Contains("to_excel(") || code.Contains("savefig("))
             {
-                var groupDir = Path.Combine(_paths.GhostClawRuntimeRoot, "groups", "main");
+                var settings = _store.GetSettings();
+                if (!settings.EnableUnsandboxedFileGeneration)
+                {
+                    generatedAttachments.Add(new ChatAttachment(
+                        "Execution Blocked", 
+                        "", 
+                        "text/plain", 
+                        0, 
+                        "File generation execution is disabled for security reasons. Enable 'Unsandboxed File Generation' in Advanced Settings to allow Python execution.", 
+                        null));
+                    continue;
+                }
+
+                var groupDir = Path.Combine(Path.GetTempPath(), "GhostClawPythonSandbox");
                 try
                 {
+                    if (Directory.Exists(groupDir)) Directory.Delete(groupDir, true);
                     Directory.CreateDirectory(groupDir);
                 }
                 catch { }
@@ -1414,9 +1462,14 @@ Message to analyze:
                                 RedirectStandardError = true,
                                 RedirectStandardOutput = true
                             };
+                            using var job = new GhostClawUI.Service.Infrastructure.JobObject();
                             using var process = Process.Start(startInfo);
                             if (process is not null)
                             {
+                                job.AddProcess(process);
+                                var timeoutTask = Task.Delay(120000);
+                                var exitTask = process.WaitForExitAsync();
+                                
                                 // Bounded streams to prevent gigabytes of buffered output on infinite print loops
                                 async Task<string> ReadBoundedAsync(System.IO.StreamReader reader, int maxChars = 50000)
                                 {
@@ -1434,16 +1487,11 @@ Message to analyze:
                                     }
                                     return sb.ToString();
                                 }
-
                                 var outTask = ReadBoundedAsync(process.StandardOutput);
                                 var errTask = ReadBoundedAsync(process.StandardError);
 
-                                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-                                try
-                                {
-                                    await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
-                                }
-                                catch (OperationCanceledException)
+                                var completedTask = await Task.WhenAny(exitTask, timeoutTask).ConfigureAwait(false);
+                                if (completedTask == timeoutTask)
                                 {
                                     try { process.Kill(); } catch { }
                                     exitCode = -1;

@@ -357,22 +357,22 @@ internal sealed partial class ChatView
         var glyph = "\uE9A1";
         var iconColor = UiKit.AccentBrush;
 
-        if (titleLower.Contains("terminal") || titleLower.Contains("bash"))
+        if (titleLower.Contains("execute_command") || titleLower.Contains("terminal") || titleLower.Contains("bash"))
         {
             glyph = "\uE756";
             iconColor = UiKit.BrushFromHex("#10B981");
         }
-        else if (titleLower.Contains("web") || titleLower.Contains("search"))
+        else if (titleLower.Contains("search") || titleLower.Contains("web") || titleLower.Contains("browse"))
         {
             glyph = "\uE12B";
             iconColor = UiKit.BrushFromHex("#3B82F6");
         }
-        else if (titleLower.Contains("data") || titleLower.Contains("file"))
+        else if (titleLower.Contains("read_file") || titleLower.Contains("write_to_file") || titleLower.Contains("data") || titleLower.Contains("file"))
         {
             glyph = "\uE8C3";
             iconColor = UiKit.BrushFromHex("#8B5CF6");
         }
-        else if (titleLower.Contains("planner"))
+        else if (titleLower.Contains("attempt_completion") || titleLower.Contains("planner"))
         {
             glyph = "\uE73E";
             iconColor = UiKit.BrushFromHex("#F59E0B");
@@ -406,7 +406,7 @@ internal sealed partial class ChatView
 
         if (!string.IsNullOrWhiteSpace(trace.Detail))
         {
-            var isTerminalCode = titleLower.Contains("terminal") || titleLower.Contains("bash") || trace.Detail.Contains("Executing:") || trace.Detail.Contains("Reading file:");
+            var isTerminalCode = titleLower.Contains("execute_command") || titleLower.Contains("terminal") || titleLower.Contains("bash") || trace.Detail.Contains("Executing:") || trace.Detail.Contains("Reading file:");
 
             if (isTerminalCode)
             {

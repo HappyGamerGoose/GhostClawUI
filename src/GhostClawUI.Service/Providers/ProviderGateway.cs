@@ -28,8 +28,9 @@ internal sealed class ProviderGateway
 
         try
         {
+            var isAnthropic = IsAnthropicProvider(request.BaseUrl, request.Name, "");
             using var httpRequest = new HttpRequestMessage(HttpMethod.Get, modelsUri);
-            ApplyAuth(httpRequest, request.ApiKey);
+            ApplyAuth(httpRequest, request.ApiKey, isAnthropic);
             using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
@@ -78,8 +79,9 @@ internal sealed class ProviderGateway
             {
                 try
                 {
+                    var isAnthropic = IsAnthropicProvider(provider.BaseUrl, provider.Name, provider.Id);
                     using var request = new HttpRequestMessage(HttpMethod.Post, variant.Endpoint);
-                    ApplyAuth(request, apiKey);
+                    ApplyAuth(request, apiKey, isAnthropic);
                     request.Content = new StringContent(variant.Payload.ToJsonString(PipeJson.Options), Encoding.UTF8, "application/json");
                     using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
                     var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -198,18 +200,26 @@ internal sealed class ProviderGateway
         return builder.ToString();
     }
 
-    private static void ApplyAuth(HttpRequestMessage request, string? apiKey)
+    private static void ApplyAuth(HttpRequestMessage request, string? apiKey, bool isAnthropic)
     {
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            if (isAnthropic)
+            {
+                request.Headers.Add("x-api-key", apiKey);
+                request.Headers.Add("anthropic-version", "2023-06-01");
+            }
+            else
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            }
         }
     }
 
-    private static string BuildChatEndpoint(string baseUrl)
+    private static string BuildChatEndpoint(string baseUrl, bool isAnthropic)
     {
         var normalized = baseUrl.Trim().TrimEnd('/');
-        if (normalized.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+        if (normalized.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase) || normalized.EndsWith("/v1/messages", StringComparison.OrdinalIgnoreCase))
         {
             return normalized;
         }
@@ -224,7 +234,7 @@ internal sealed class ProviderGateway
             normalized += "/v1";
         }
 
-        return normalized + "/chat/completions";
+        return isAnthropic ? normalized + "/v1/messages" : normalized + "/chat/completions";
     }
 
     private static string BuildResponsesEndpoint(string baseUrl)
@@ -283,34 +293,60 @@ internal sealed class ProviderGateway
         IReadOnlyList<ChatAttachment> attachments,
         string verbosity)
     {
-        var chatEndpoint = BuildChatEndpoint(provider.BaseUrl);
         var isAnthropic = IsAnthropicProvider(provider.BaseUrl, provider.Name, provider.Id);
-        var variants = new List<RequestVariant>
+        var chatEndpoint = BuildChatEndpoint(provider.BaseUrl, isAnthropic);
+        var variants = new List<RequestVariant>();
+
+        if (isAnthropic)
         {
-            new("chat-standard", chatEndpoint, new JsonObject
-            {
-                ["model"] = model,
-                ["stream"] = false,
-                ["messages"] = BuildMessages(userMessage, history, facts, attachments, verbosity, includeSystem: true, includeImages: true, isAnthropic: isAnthropic)
-            }, false),
-            new("chat-minimal", chatEndpoint, new JsonObject
-            {
-                ["model"] = model,
-                ["messages"] = BuildMessages(userMessage, history, facts, attachments, verbosity, includeSystem: false, includeImages: true, isAnthropic: isAnthropic)
-            }, false),
-            new("chat-max-completion-tokens", chatEndpoint, new JsonObject
-            {
-                ["model"] = model,
-                ["max_completion_tokens"] = 4096,
-                ["messages"] = BuildMessages(userMessage, Array.Empty<ChatMessage>(), facts, attachments, verbosity, includeSystem: false, includeImages: true, isAnthropic: isAnthropic)
-            }, false),
-            new("chat-max-tokens", chatEndpoint, new JsonObject
+            var systemPrompt = BuildSystemPrompt(facts, verbosity);
+            variants.Add(new("anthropic-standard", chatEndpoint, new JsonObject
             {
                 ["model"] = model,
                 ["max_tokens"] = 4096,
-                ["messages"] = BuildMessages(userMessage, Array.Empty<ChatMessage>(), facts, attachments, verbosity, includeSystem: false, includeImages: true, isAnthropic: isAnthropic)
-            }, false)
-        };
+                ["system"] = systemPrompt,
+                ["messages"] = BuildMessages(userMessage, history, facts, attachments, verbosity, includeSystem: false, includeImages: true, isAnthropic: true)
+            }, false));
+            variants.Add(new("anthropic-no-history", chatEndpoint, new JsonObject
+            {
+                ["model"] = model,
+                ["max_tokens"] = 4096,
+                ["system"] = systemPrompt,
+                ["messages"] = BuildMessages(userMessage, Array.Empty<ChatMessage>(), facts, attachments, verbosity, includeSystem: false, includeImages: true, isAnthropic: true)
+            }, false));
+        }
+        else
+        {
+            variants.Add(new("chat-standard", chatEndpoint, new JsonObject
+            {
+                ["model"] = model,
+                ["stream"] = false,
+                ["messages"] = BuildMessages(userMessage, history, facts, attachments, verbosity, includeSystem: true, includeImages: true, isAnthropic: false)
+            }, false));
+            variants.Add(new("chat-minimal", chatEndpoint, new JsonObject
+            {
+                ["model"] = model,
+                ["messages"] = BuildMessages(userMessage, history, facts, attachments, verbosity, includeSystem: true, includeImages: true, isAnthropic: false)
+            }, false));
+            variants.Add(new("chat-max-completion-tokens", chatEndpoint, new JsonObject
+            {
+                ["model"] = model,
+                ["max_completion_tokens"] = 4096,
+                ["messages"] = BuildMessages(userMessage, history, facts, attachments, verbosity, includeSystem: true, includeImages: true, isAnthropic: false)
+            }, false));
+            variants.Add(new("chat-max-tokens", chatEndpoint, new JsonObject
+            {
+                ["model"] = model,
+                ["max_tokens"] = 4096,
+                ["messages"] = BuildMessages(userMessage, history, facts, attachments, verbosity, includeSystem: true, includeImages: true, isAnthropic: false)
+            }, false));
+            variants.Add(new("chat-no-history", chatEndpoint, new JsonObject
+            {
+                ["model"] = model,
+                ["max_tokens"] = 4096,
+                ["messages"] = BuildMessages(userMessage, Array.Empty<ChatMessage>(), facts, attachments, verbosity, includeSystem: true, includeImages: true, isAnthropic: false)
+            }, false));
+        }
 
         if (IsGoogleProvider(provider.BaseUrl, provider.Name, provider.Id))
         {
@@ -899,7 +935,8 @@ internal sealed class ProviderGateway
         string prompt,
         CancellationToken cancellationToken)
     {
-        var chatEndpoint = BuildChatEndpoint(provider.BaseUrl);
+        bool isAnthropic = provider.BaseUrl.Contains("anthropic.com", StringComparison.OrdinalIgnoreCase);
+        var chatEndpoint = BuildChatEndpoint(provider.BaseUrl, isAnthropic);
         var payload = new JsonObject
         {
             ["model"] = model,
@@ -916,7 +953,7 @@ internal sealed class ProviderGateway
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, chatEndpoint);
-            ApplyAuth(request, apiKey);
+            ApplyAuth(request, apiKey, isAnthropic);
             request.Content = new StringContent(payload.ToJsonString(PipeJson.Options), Encoding.UTF8, "application/json");
             using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)

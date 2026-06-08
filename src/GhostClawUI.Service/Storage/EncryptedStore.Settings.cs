@@ -140,6 +140,12 @@ internal sealed partial class EncryptedStore
         }
     }
 
+    public string? GetProviderKey(string providerId) => GetSetting($"provider-key-{providerId}");
+
+    public void SaveProviderKey(string providerId, string apiKey) => SetSetting($"provider-key-{providerId}", apiKey);
+
+    public void DeleteProviderKey(string providerId) => Execute("DELETE FROM settings WHERE key = $key", ("$key", $"provider-key-{providerId}"));
+
     private string? GetSetting(string key)
     {
         lock (_gate)
@@ -165,7 +171,10 @@ internal sealed partial class EncryptedStore
             false,
             true,
             null,
-            null);
+            null,
+            null,
+            null,
+            false);
 
     private static IReadOnlyList<string> DefaultRegistryUrls() =>
         new[]

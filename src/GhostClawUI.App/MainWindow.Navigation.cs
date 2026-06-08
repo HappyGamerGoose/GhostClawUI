@@ -51,23 +51,26 @@ internal sealed partial class MainWindow
         try
         {
             var conversations = await _pipe.RequestAsync<IReadOnlyList<ConversationSummary>>("conversations.list", new SimpleTextRequest(query ?? string.Empty)).ConfigureAwait(false) ?? Array.Empty<ConversationSummary>();
-            _conversationList.ItemsSource = null;
-            _conversationList.DisplayMemberPath = null;
-            _conversationList.Items.Clear();
-            foreach (var conversation in conversations)
-            {
-                _conversationList.Items.Add(ConversationItem(conversation));
-            }
-            
             DispatcherQueue.TryEnqueue(() =>
             {
+                _conversationList.ItemsSource = null;
+                _conversationList.DisplayMemberPath = null;
+                _conversationList.Items.Clear();
+                foreach (var conversation in conversations)
+                {
+                    _conversationList.Items.Add(ConversationItem(conversation));
+                }
+                
                 _chatsLabel.Text = _conversationList.Items.Count == 0 ? "No chats yet" : "Chats";
             });
         }
         catch
         {
-            _conversationList.ItemsSource = null;
-            _conversationList.Items.Clear();
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                _conversationList.ItemsSource = null;
+                _conversationList.Items.Clear();
+            });
         }
     }
 
@@ -277,6 +280,7 @@ internal sealed partial class MainWindow
 
     private void ShowNotice(string title, string message, InfoBarSeverity severity = InfoBarSeverity.Informational)
     {
+        _noticeHost.Children.Clear();
         _noticeHost.Children.Add(UiKit.Info(title, message, severity));
     }
 

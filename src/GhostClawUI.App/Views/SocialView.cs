@@ -202,8 +202,14 @@ internal sealed class SocialView : UserControl
         Grid.SetColumn(waCard, 1);
         body.Children.Add(waCard);
 
-        Grid.SetRow(body, 1);
-        root.Children.Add(body);
+        var scrollViewer = new ScrollViewer
+        {
+            Content = body,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+        };
+        Grid.SetRow(scrollViewer, 1);
+        root.Children.Add(scrollViewer);
 
         return root;
     }

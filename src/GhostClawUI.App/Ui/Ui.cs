@@ -11,8 +11,9 @@ internal static class UiKit
 {
     public static bool IsDarkMode => MainWindow.Instance?.IsDarkMode ?? (Application.Current.RequestedTheme == ApplicationTheme.Dark);
 
-    public static readonly Thickness PagePadding = new(34, 30, 34, 28);
+    public static readonly Thickness PagePadding = new(40, 32, 40, 40);
     public static readonly SolidColorBrush AccentBrush = BrushFromHex("#0B63F6");
+
     public static readonly SolidColorBrush QuietTextBrush = BrushFromHex("#64748B");
     public static readonly SolidColorBrush SidebarBrush = new SolidColorBrush(Colors.Transparent);
     public static readonly SolidColorBrush SidebarHoverBrush = BrushFromHex("#19000000");
@@ -84,6 +85,23 @@ internal static class UiKit
         };
         AutomationProperties.SetName(button, automationName);
         button.Click += click;
+        return button;
+    }
+
+    public static Button DangerButton(string label, Symbol symbol, RoutedEventHandler click)
+    {
+        var button = Button(label, symbol, click);
+        button.Foreground = BrushFromHex("#EF4444");
+        button.BorderBrush = BrushFromHex("#EF4444");
+        button.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(20, 239, 68, 68));
+        return button;
+    }
+
+    public static Button DangerIconButton(Symbol symbol, string automationName, RoutedEventHandler click)
+    {
+        var button = IconButton(symbol, automationName, click);
+        button.Foreground = BrushFromHex("#EF4444");
+        button.Background = new SolidColorBrush(Colors.Transparent);
         return button;
     }
 
@@ -169,8 +187,9 @@ internal static class UiKit
             CornerRadius = new CornerRadius(12),
             BorderThickness = new Thickness(1),
             BorderBrush = BrushFromHex(IsDarkMode ? "#1AFFFFFF" : "#1A000000"),
-            Background = BrushFromHex(IsDarkMode ? "#7710151C" : "#99F8FAFC")
+            Background = BrushFromHex(IsDarkMode ? "#1E1E1E" : "#FFFFFF")
         };
+        AddElevation(card, 16);
         AddHoverScale(card);
         return card;
     }
@@ -184,17 +203,19 @@ internal static class UiKit
             CornerRadius = new CornerRadius(12),
             BorderThickness = new Thickness(1),
             BorderBrush = BrushFromHex(IsDarkMode ? "#1AFFFFFF" : "#1A000000"),
-            Background = BrushFromHex(IsDarkMode ? "#99151A22" : "#BBE2E8F0")
+            Background = BrushFromHex(IsDarkMode ? "#121212" : "#F8FAFC")
         };
         AddHoverScale(surface);
         return surface;
     }
 
-    public static Grid Page()
+    public static Grid Page(double maxWidth = 760)
     {
         return new Grid
         {
             Padding = PagePadding,
+            MaxWidth = maxWidth,
+            HorizontalAlignment = HorizontalAlignment.Left,
             Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0))
         };
     }

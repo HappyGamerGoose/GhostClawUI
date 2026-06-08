@@ -58,6 +58,11 @@ internal sealed partial class MainWindow
             {
                 _conversationList.Items.Add(ConversationItem(conversation));
             }
+            
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                _chatsLabel.Text = _conversationList.Items.Count == 0 ? "No chats yet" : "Chats";
+            });
         }
         catch
         {

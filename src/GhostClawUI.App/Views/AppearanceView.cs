@@ -129,6 +129,9 @@ internal sealed class AppearanceView : UserControl
         themeGroup.Children.Add(Labeled("Accent Color", _swatches));
         form.Children.Add(themeGroup);
 
+        var divider1 = new Border { Height = 1, Background = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"], Margin = new Thickness(0, 16, 0, 16) };
+        form.Children.Add(divider1);
+
         // Type & Spacing Group
         var typeGroup = new StackPanel { Spacing = 12 };
         typeGroup.Children.Add(UiKit.Text("Typography & Spacing", 16, Microsoft.UI.Text.FontWeights.SemiBold));
@@ -136,24 +139,51 @@ internal sealed class AppearanceView : UserControl
         typeGroup.Children.Add(Labeled("Font", _font));
 
         _size.ValueChanged += (_, e) => { _sizeReadout.Text = $"{e.NewValue}px"; Preview(); QueueSave(); };
-        var sizeRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
-        sizeRow.Children.Add(new FontIcon { Glyph = "\uE8D3", FontSize = 10 }); // small A
-        sizeRow.Children.Add(_size);
-        sizeRow.Children.Add(new FontIcon { Glyph = "\uE8D3", FontSize = 18 }); // large A
-        sizeRow.Children.Add(_sizeReadout);
+        var sizeRow = new Grid { ColumnSpacing = 8 };
+        sizeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        sizeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        sizeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        sizeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        
+        var smallA = new FontIcon { Glyph = "\uE8D3", FontSize = 10 }; smallA.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(smallA, 0); sizeRow.Children.Add(smallA);
+        
+        _size.VerticalAlignment = VerticalAlignment.Center; _size.Width = 150;
+        Grid.SetColumn(_size, 1); sizeRow.Children.Add(_size);
+        
+        var largeA = new FontIcon { Glyph = "\uE8D3", FontSize = 18 }; largeA.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(largeA, 2); sizeRow.Children.Add(largeA);
+        
+        _sizeReadout.VerticalAlignment = VerticalAlignment.Center; _sizeReadout.HorizontalAlignment = HorizontalAlignment.Right;
+        Grid.SetColumn(_sizeReadout, 3); sizeRow.Children.Add(_sizeReadout);
         typeGroup.Children.Add(Labeled("Font size", sizeRow));
 
         _lineHeight.ValueChanged += (_, e) => { _lineHeightReadout.Text = $"{e.NewValue:0.00}"; Preview(); QueueSave(); };
-        var lhRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
-        lhRow.Children.Add(new FontIcon { Glyph = "\uE8D3", FontSize = 10 }); // small A
-        lhRow.Children.Add(_lineHeight);
-        lhRow.Children.Add(new FontIcon { Glyph = "\uE8D3", FontSize = 18 }); // large A
-        lhRow.Children.Add(_lineHeightReadout);
+        var lhRow = new Grid { ColumnSpacing = 8 };
+        lhRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        lhRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        lhRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        lhRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        
+        var smallLh = new FontIcon { Glyph = "\uE8D3", FontSize = 10 }; smallLh.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(smallLh, 0); lhRow.Children.Add(smallLh);
+        
+        _lineHeight.VerticalAlignment = VerticalAlignment.Center; _lineHeight.Width = 150;
+        Grid.SetColumn(_lineHeight, 1); lhRow.Children.Add(_lineHeight);
+        
+        var largeLh = new FontIcon { Glyph = "\uE8D3", FontSize = 18 }; largeLh.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(largeLh, 2); lhRow.Children.Add(largeLh);
+        
+        _lineHeightReadout.VerticalAlignment = VerticalAlignment.Center; _lineHeightReadout.HorizontalAlignment = HorizontalAlignment.Right;
+        Grid.SetColumn(_lineHeightReadout, 3); lhRow.Children.Add(_lineHeightReadout);
         typeGroup.Children.Add(Labeled("Line height", lhRow));
 
         _density.ItemsSource = new[] { "Comfortable", "Compact" };
         typeGroup.Children.Add(Labeled("Density", _density));
         form.Children.Add(typeGroup);
+
+        var divider2 = new Border { Height = 1, Background = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"], Margin = new Thickness(0, 16, 0, 16) };
+        form.Children.Add(divider2);
 
         // Layout Group
         var layoutGroup = new StackPanel { Spacing = 12 };

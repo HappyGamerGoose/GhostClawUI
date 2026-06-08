@@ -48,14 +48,20 @@ internal sealed partial class MainWindow : Window, IDisposable
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         Title = "GhostClawUI";
-        SystemBackdrop = new MicaBackdrop();
+        SystemBackdrop = null;
         TrySetWindowIcon();
         TrySetInitialWindowSize();
         InitializeSidebar();
-        RootHost.ActualThemeChanged += (_, _) => ApplyShellPalette();
+        RootHost.ActualThemeChanged += (_, _) => { ApplyShellPalette(); ApplyRootBackground(); };
         ApplyShellPalette();
+        ApplyRootBackground();
         _tray = new TrayHotkeyService(this, () => ShowPage("Chat"), () => ShowPage("Settings"), Close, OpenQuickPrompt);
         _ = InitializeAsync();
+    }
+
+    private void ApplyRootBackground()
+    {
+        RootHost.Background = UiKit.BrushFromHex(IsDarkMode ? "#121212" : "#F8FAFC");
     }
 
     public void Dispose()

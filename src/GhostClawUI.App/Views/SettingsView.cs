@@ -4,6 +4,7 @@ using GhostClawUI.Shared;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 namespace GhostClawUI.App.Views;
 
@@ -15,9 +16,9 @@ internal sealed class SettingsView : UserControl
     private readonly Action<string, string, InfoBarSeverity> _notice;
     private AppSettings _settings;
     private readonly ComboBox _verbosity = UiKit.Combo("Verbosity");
-    private readonly ToggleSwitch _fallback = new() { Header = "Fallback providers" };
-    private readonly ToggleSwitch _silent = new() { Header = "Silent tool confirmations" };
-    private readonly ToggleSwitch _updates = new() { Header = "Silent auto-update checks" };
+    private readonly ToggleSwitch _fallback = new() { Header = null, OnContent = null, OffContent = null };
+    private readonly ToggleSwitch _silent = new() { Header = null, OnContent = null, OffContent = null };
+    private readonly ToggleSwitch _updates = new() { Header = null, OnContent = null, OffContent = null };
     private readonly DispatcherQueueTimer _saveTimer;
     private readonly Windows.Foundation.TypedEventHandler<DispatcherQueueTimer, object> _saveTimerHandler;
     private bool _loading;
@@ -76,19 +77,24 @@ internal sealed class SettingsView : UserControl
 
         var body = new StackPanel
         {
-            MaxWidth = 680,
+            MaxWidth = 760,
             HorizontalAlignment = HorizontalAlignment.Left
         };
 
         _verbosity.ItemsSource = new[] { "Minimal", "Expanded" };
+        _verbosity.Width = 140;
 
-        var behavior = new StackPanel { Spacing = 12 };
+        var behavior = new StackPanel { Spacing = 8 };
         behavior.Children.Add(UiKit.Text("Runtime", 18, Microsoft.UI.Text.FontWeights.SemiBold));
         behavior.Children.Add(UiKit.Muted("Controls how much the agent explains and how quietly tools run.", 13));
-        behavior.Children.Add(Labeled("Verbosity", _verbosity));
-        behavior.Children.Add(_fallback);
-        behavior.Children.Add(_silent);
-        behavior.Children.Add(_updates);
+
+        var behaviorList = new StackPanel { Spacing = 12, Margin = new Thickness(0, 12, 0, 0) };
+        behaviorList.Children.Add(SettingRow("Log Verbosity", "Detail level for console and system logs.", _verbosity, true));
+        behaviorList.Children.Add(SettingRow("Fallback Providers", "Automatically try alternative models if the primary provider fails.", _fallback, true));
+        behaviorList.Children.Add(SettingRow("Silent Confirmations", "Allow the agent to run read-only tools without explicit approval.", _silent, true));
+        behaviorList.Children.Add(SettingRow("Auto Updates", "Silently check for client updates in the background.", _updates, false));
+        behavior.Children.Add(behaviorList);
+
         body.Children.Add(UiKit.Card(behavior));
 
         var data = new StackPanel { Spacing = 12, Margin = new Thickness(0, 16, 0, 0) };
@@ -114,7 +120,7 @@ internal sealed class SettingsView : UserControl
                 _notice("Export failed", ex.Message, InfoBarSeverity.Error);
             }
         }));
-        actions.Children.Add(UiKit.Button("Purge All Data", Symbol.Delete, async (_, _) =>
+        actions.Children.Add(UiKit.DangerButton("Purge All Data", Symbol.Delete, async (_, _) =>
         {
             var dialog = new ContentDialog
             {
@@ -161,16 +167,29 @@ internal sealed class SettingsView : UserControl
         return root;
     }
 
-    private static StackPanel Labeled(string label, FrameworkElement element) =>
-        new()
-        {
-            Spacing = 5,
-            Children =
-            {
-                UiKit.Text(label, 12, Microsoft.UI.Text.FontWeights.SemiBold),
-                element
-            }
-        };
+    private FrameworkElement SettingRow(string title, string description, FrameworkElement control, bool showDivider)
+    {
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        
+        var text = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        text.Children.Add(UiKit.Text(title, 14, Microsoft.UI.Text.FontWeights.SemiBold));
+        text.Children.Add(UiKit.Muted(description, 12));
+        Grid.SetColumn(text, 0);
+        row.Children.Add(text);
+
+        control.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(control, 1);
+        row.Children.Add(control);
+
+        if (!showDivider) return row;
+
+        var wrapper = new StackPanel { Spacing = 12 };
+        wrapper.Children.Add(row);
+        wrapper.Children.Add(new Border { Height = 1, Background = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"] });
+        return wrapper;
+    }
 
     private void Load()
     {

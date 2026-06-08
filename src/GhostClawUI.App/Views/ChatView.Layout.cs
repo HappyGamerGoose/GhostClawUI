@@ -163,22 +163,24 @@ internal sealed partial class ChatView
         _providers.SelectionChanged += (_, _) => SyncModels();
         _providers.MinHeight = 32;
         _providers.Height = 32;
-        _providers.Padding = new Thickness(8, 2, 8, 2);
-        _providers.CornerRadius = new CornerRadius(4);
+        _providers.Padding = new Thickness(12, 2, 12, 2);
+        _providers.CornerRadius = new CornerRadius(16);
         _providers.Width = 140;
-        _providers.BorderThickness = new Thickness(0);
-        _providers.Background = new SolidColorBrush(Colors.Transparent);
+        _providers.BorderThickness = new Thickness(1);
+        _providers.BorderBrush = StrokeBrush();
+        _providers.Background = ControlSurfaceBrush();
 
         _models.SelectionChanged += (s, e) => UpdateHeaderModelInfo();
         _models.MinHeight = 32;
         _models.Height = 32;
-        _models.Padding = new Thickness(8, 2, 8, 2);
-        _models.CornerRadius = new CornerRadius(4);
+        _models.Padding = new Thickness(12, 2, 12, 2);
+        _models.CornerRadius = new CornerRadius(16);
         _models.Width = double.NaN;
         _models.MinWidth = 200;
         _models.MaxWidth = 450;
-        _models.BorderThickness = new Thickness(0);
-        _models.Background = new SolidColorBrush(Colors.Transparent);
+        _models.BorderThickness = new Thickness(1);
+        _models.BorderBrush = StrokeBrush();
+        _models.Background = ControlSurfaceBrush();
 
         leftPanel.Children.Add(_providers);
         leftPanel.Children.Add(_models);
@@ -262,27 +264,52 @@ internal sealed partial class ChatView
             MaxWidth = 680
         };
 
-        var logoIcon = new FontIcon
+        var logoIcon = new Image
         {
-            Glyph = "\uE9F5", // Cyber/Agent icon
-            FontSize = 42,
-            Foreground = UiKit.AccentBrush,
-            HorizontalAlignment = HorizontalAlignment.Center
+            Source = new BitmapImage(new Uri("ms-appx:///Assets/GhostClawUI.Icon.png")),
+            Width = 64,
+            Height = 64,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Stretch = Stretch.Uniform,
+            Opacity = 0.8
         };
 
         var headerText = UiKit.Text("How can I help you today?", 28, FontWeights.Bold);
         headerText.Foreground = PrimaryTextBrush();
         headerText.HorizontalAlignment = HorizontalAlignment.Center;
+        headerText.Margin = new Thickness(0, -4, 0, 0);
 
         var subText = UiKit.Muted(string.IsNullOrWhiteSpace(title) || title.Contains("ready", StringComparison.OrdinalIgnoreCase) || title.Contains("GhostClaw", StringComparison.OrdinalIgnoreCase) ? "GhostClaw Desktop Intelligence" : title, 14);
         subText.HorizontalAlignment = HorizontalAlignment.Center;
         subText.TextAlignment = TextAlignment.Center;
+        subText.Margin = new Thickness(0, -6, 0, 0);
+
+        var chips = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 24, 0, 0) };
+        chips.Children.Add(PromptChip("Summarize a PDF"));
+        chips.Children.Add(PromptChip("Run a shell command"));
+        chips.Children.Add(PromptChip("Search the web"));
 
         panel.Children.Add(logoIcon);
         panel.Children.Add(headerText);
         panel.Children.Add(subText);
+        panel.Children.Add(chips);
 
         _messages.Children.Add(panel);
+    }
+
+    private Button PromptChip(string text)
+    {
+        var btn = new Button
+        {
+            Content = UiKit.Text(text, 13),
+            Background = ControlSurfaceBrush(),
+            BorderBrush = StrokeBrush(),
+            CornerRadius = new CornerRadius(16),
+            Padding = new Thickness(16, 8, 16, 8)
+        };
+        UiKit.AddHoverScale(btn);
+        btn.Click += (_, _) => { _composer.Text = text; };
+        return btn;
     }
 
 

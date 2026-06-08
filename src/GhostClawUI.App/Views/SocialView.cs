@@ -45,7 +45,7 @@ internal sealed class SocialView : UserControl
         root.HorizontalAlignment = HorizontalAlignment.Center;
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.RowSpacing = 8;
+        root.RowSpacing = 24;
 
         // Header
         var header = new StackPanel { Spacing = 6 };
@@ -61,57 +61,67 @@ internal sealed class SocialView : UserControl
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             },
-            ColumnSpacing = 8
+            ColumnSpacing = 16
         };
 
         // Telegram Card
         var tgGrid = new Grid();
-        tgGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        tgGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        tgGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Header (Toggle/Status)
+        tgGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // Content
+        tgGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Footer
 
-        var tgForm = new StackPanel { Spacing = 8 };
-        tgForm.Children.Add(UiKit.Text("Telegram Configuration", 18, Microsoft.UI.Text.FontWeights.SemiBold));
-        tgForm.Children.Add(UiKit.Muted("Setup credentials for incoming Telegram messages.", 12));
-        tgForm.Children.Add(Labeled("Bot Token", _botToken));
-        tgForm.Children.Add(Labeled("Authorized Chat ID", _chatId));
-
-        var tgGuide = new StackPanel { Spacing = 8, Margin = new Thickness(0, 0, 0, 8) };
-        tgGuide.Children.Add(Bullet("1. Create a bot using Telegram's @BotFather and copy the Bot Token."));
-        tgGuide.Children.Add(Bullet("2. Get your Chat ID using @userinfobot."));
-        tgGuide.Children.Add(Bullet("3. Paste the Token and Chat ID above, enable the listener, and save."));
-        var tgGuideTitle = UiKit.Text("Setup Instructions", 14, Microsoft.UI.Text.FontWeights.SemiBold);
-        tgGuideTitle.Margin = new Thickness(0, 16, 0, 0);
-        tgForm.Children.Add(tgGuideTitle);
-        tgForm.Children.Add(tgGuide);
-
-        var tgFooter = new StackPanel { Spacing = 12, Margin = new Thickness(0, 16, 0, 0) };
-        var tgButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        tgButtons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveTelegramAsync()));
-        tgButtons.Children.Add(UiKit.Button("Refresh", Symbol.Sync, async (_, _) => await RefreshTelegramStatusAsync()));
-        tgFooter.Children.Add(tgButtons);
-        
-        var tgStatusRow = new Grid();
-        tgStatusRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        tgStatusRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var tgHeader = new Grid { Margin = new Thickness(0, 0, 0, 16) };
+        tgHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        tgHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         
         _telegramEnabled.Margin = new Thickness(0);
         Grid.SetColumn(_telegramEnabled, 0);
-        tgStatusRow.Children.Add(_telegramEnabled);
+        tgHeader.Children.Add(_telegramEnabled);
         
         var tgStatusIndicators = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
         tgStatusIndicators.Children.Add(_telegramStatusBadge);
         tgStatusIndicators.Children.Add(_telegramStatusText);
         Grid.SetColumn(tgStatusIndicators, 1);
-        tgStatusRow.Children.Add(tgStatusIndicators);
-        
-        tgFooter.Children.Add(tgStatusRow);
+        tgHeader.Children.Add(tgStatusIndicators);
 
-        Grid.SetRow(tgForm, 0);
-        Grid.SetRow(tgFooter, 1);
-        tgGrid.Children.Add(tgForm);
+        Grid.SetRow(tgHeader, 0);
+        tgGrid.Children.Add(tgHeader);
+
+        var tgContent = new StackPanel { Spacing = 16 };
+        var tgForm = new StackPanel { Spacing = 8 };
+        tgForm.Children.Add(UiKit.Text("Telegram Configuration", 18, Microsoft.UI.Text.FontWeights.SemiBold));
+        tgForm.Children.Add(UiKit.Muted("Setup credentials for incoming Telegram messages.", 12));
+        tgForm.Children.Add(Labeled("Bot Token", _botToken));
+        tgForm.Children.Add(Labeled("Authorized Chat ID", _chatId));
+        tgContent.Children.Add(tgForm);
+
+        var tgGuide = new StackPanel { Spacing = 8, Margin = new Thickness(12, 12, 12, 12) };
+        tgGuide.Children.Add(Bullet("1. Create a bot using Telegram's @BotFather and copy the Bot Token."));
+        tgGuide.Children.Add(Bullet("2. Get your Chat ID using @userinfobot."));
+        tgGuide.Children.Add(Bullet("3. Paste the Token and Chat ID above, enable the listener, and save."));
+        
+        var tgExpander = new Expander
+        {
+            Header = "Setup Instructions",
+            Content = tgGuide,
+            IsExpanded = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left
+        };
+        tgContent.Children.Add(tgExpander);
+
+        Grid.SetRow(tgContent, 1);
+        tgGrid.Children.Add(tgContent);
+
+        var tgFooter = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 16, 0, 0) };
+        tgFooter.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveTelegramAsync()));
+        tgFooter.Children.Add(UiKit.Button("Refresh", Symbol.Sync, async (_, _) => await RefreshTelegramStatusAsync()));
+        
+        Grid.SetRow(tgFooter, 2);
         tgGrid.Children.Add(tgFooter);
 
         var tgCard = UiKit.Card(tgGrid);
+        tgCard.Padding = new Thickness(24);
         tgCard.HorizontalAlignment = HorizontalAlignment.Stretch;
         tgCard.VerticalAlignment = VerticalAlignment.Stretch;
         Grid.SetColumn(tgCard, 0);
@@ -119,10 +129,29 @@ internal sealed class SocialView : UserControl
 
         // WhatsApp Card
         var waGrid = new Grid();
-        waGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        waGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        waGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Header
+        waGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // Content
+        waGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Footer
+
+        var waHeader = new Grid { Margin = new Thickness(0, 0, 0, 16) };
+        waHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        waHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         
-        var waForm = new StackPanel { Spacing = 6 }; // tight spacing
+        _waEnabled.Margin = new Thickness(0);
+        Grid.SetColumn(_waEnabled, 0);
+        waHeader.Children.Add(_waEnabled);
+        
+        var waStatusIndicators = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+        waStatusIndicators.Children.Add(_waStatusBadge);
+        waStatusIndicators.Children.Add(_waStatusText);
+        Grid.SetColumn(waStatusIndicators, 1);
+        waHeader.Children.Add(waStatusIndicators);
+        
+        Grid.SetRow(waHeader, 0);
+        waGrid.Children.Add(waHeader);
+
+        var waContent = new StackPanel { Spacing = 16 };
+        var waForm = new StackPanel { Spacing = 6 };
         waForm.Children.Add(UiKit.Text("WhatsApp Cloud API Configuration", 18, Microsoft.UI.Text.FontWeights.SemiBold));
         waForm.Children.Add(UiKit.Muted("Setup local webhook for Meta WhatsApp Business API.", 12));
 
@@ -138,44 +167,36 @@ internal sealed class SocialView : UserControl
         waWebhook.Children.Add(Labeled("Local Webhook Port", _waWebhookPort));
         waForm.Children.Add(waWebhook);
 
-        var waGuide = new StackPanel { Spacing = 8, Margin = new Thickness(0, 0, 0, 8) };
+        waContent.Children.Add(waForm);
+
+        var waGuide = new StackPanel { Spacing = 8, Margin = new Thickness(12, 12, 12, 12) };
         waGuide.Children.Add(Bullet("1. Create an app in the Meta Developer Portal and add WhatsApp."));
         waGuide.Children.Add(Bullet("2. Expose your local port (e.g. 5000) using ngrok: `ngrok http 5000`."));
         waGuide.Children.Add(Bullet("3. Configure the Meta Webhook to point to your ngrok URL (`https://your-ngrok.app/webhook/whatsapp`)."));
         waGuide.Children.Add(Bullet("4. Copy the Access Token and Phone ID, set your Verify Token, and save."));
-        var waGuideTitle = UiKit.Text("Setup Instructions", 14, Microsoft.UI.Text.FontWeights.SemiBold);
-        waGuideTitle.Margin = new Thickness(0, 16, 0, 0);
-        waForm.Children.Add(waGuideTitle);
-        waForm.Children.Add(waGuide);
-
-        var waFooter = new StackPanel { Spacing = 12, Margin = new Thickness(0, 16, 0, 0) };
-        var waButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        waButtons.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveWhatsAppAsync()));
-        waButtons.Children.Add(UiKit.Button("Refresh", Symbol.Sync, async (_, _) => await RefreshWhatsAppStatusAsync()));
-        waFooter.Children.Add(waButtons);
-
-        var waStatusRow = new Grid();
-        waStatusRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        waStatusRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         
-        _waEnabled.Margin = new Thickness(0);
-        Grid.SetColumn(_waEnabled, 0);
-        waStatusRow.Children.Add(_waEnabled);
-        
-        var waStatusIndicators = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
-        waStatusIndicators.Children.Add(_waStatusBadge);
-        waStatusIndicators.Children.Add(_waStatusText);
-        Grid.SetColumn(waStatusIndicators, 1);
-        waStatusRow.Children.Add(waStatusIndicators);
-        
-        waFooter.Children.Add(waStatusRow);
+        var waExpander = new Expander
+        {
+            Header = "Setup Instructions",
+            Content = waGuide,
+            IsExpanded = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left
+        };
+        waContent.Children.Add(waExpander);
 
-        Grid.SetRow(waForm, 0);
-        Grid.SetRow(waFooter, 1);
-        waGrid.Children.Add(waForm);
+        Grid.SetRow(waContent, 1);
+        waGrid.Children.Add(waContent);
+
+        var waFooter = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 16, 0, 0) };
+        waFooter.Children.Add(UiKit.PrimaryButton("Save", Symbol.Save, async (_, _) => await SaveWhatsAppAsync()));
+        waFooter.Children.Add(UiKit.Button("Refresh", Symbol.Sync, async (_, _) => await RefreshWhatsAppStatusAsync()));
+        
+        Grid.SetRow(waFooter, 2);
         waGrid.Children.Add(waFooter);
 
         var waCard = UiKit.Card(waGrid);
+        waCard.Padding = new Thickness(24);
         waCard.HorizontalAlignment = HorizontalAlignment.Stretch;
         waCard.VerticalAlignment = VerticalAlignment.Stretch;
         Grid.SetColumn(waCard, 1);

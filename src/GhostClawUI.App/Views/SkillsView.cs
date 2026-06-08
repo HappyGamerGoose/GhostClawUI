@@ -50,47 +50,38 @@ internal sealed class SkillsView : UserControl
         root.MaxWidth = 1100;
         root.HorizontalAlignment = HorizontalAlignment.Center;
 
-        // Header Grid to hold title/desc on left, and "Add Skill" on right
-        var headerGrid = new Grid
+        var top = new Grid
         {
             ColumnDefinitions =
             {
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
-                new ColumnDefinition { Width = GridLength.Auto }
-            }
-        };
-        var headerInfo = new StackPanel { Spacing = 6 };
-        headerInfo.Children.Add(UiKit.Text("Skills Library", 24, FontWeights.SemiBold));
-        headerInfo.Children.Add(UiKit.Muted("Browse installed skills and inject them as context into your chat messages.", 14));
-        headerGrid.Children.Add(headerInfo);
-
-        var addSkillBtn = UiKit.PrimaryButton("Add Skill", Symbol.Add, async (_, _) => await AddSkillDialogAsync());
-        addSkillBtn.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(addSkillBtn, 1);
-        headerGrid.Children.Add(addSkillBtn);
-
-        root.Children.Add(headerGrid);
-
-        // Search bar
-        var searchRow = new Grid
-        {
-            ColumnDefinitions =
-            {
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = new GridLength(300) },
+                new ColumnDefinition { Width = GridLength.Auto },
                 new ColumnDefinition { Width = GridLength.Auto }
             },
-            ColumnSpacing = 10
+            ColumnSpacing = 10,
+            VerticalAlignment = VerticalAlignment.Center
         };
+
+        var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16, VerticalAlignment = VerticalAlignment.Center };
+        heading.Children.Add(UiKit.Text("Skills Library", 24, FontWeights.SemiBold));
+        top.Children.Add(heading);
+
+        Grid.SetColumn(_search, 1);
         _search.HorizontalAlignment = HorizontalAlignment.Stretch;
         _search.TextChanged += (_, _) => FilterSkills(_search.Text);
-        searchRow.Children.Add(_search);
+        top.Children.Add(_search);
+
+        var addSkillBtn = UiKit.PrimaryButton("Add Skill", Symbol.Add, async (_, _) => await AddSkillDialogAsync());
+        Grid.SetColumn(addSkillBtn, 2);
+        top.Children.Add(addSkillBtn);
 
         var refreshBtn = UiKit.Button("Refresh", Symbol.Refresh, async (_, _) => await LoadSkillsAsync());
-        refreshBtn.MinHeight = 36;
-        Grid.SetColumn(refreshBtn, 1);
-        searchRow.Children.Add(refreshBtn);
-        Grid.SetRow(searchRow, 1);
-        root.Children.Add(searchRow);
+        Grid.SetColumn(refreshBtn, 3);
+        top.Children.Add(refreshBtn);
+
+        Grid.SetRow(top, 0);
+        root.Children.Add(top);
 
         // Skills list
         var scroll = new ScrollViewer
@@ -169,7 +160,10 @@ internal sealed class SkillsView : UserControl
         var categoryBadge = InferCategory(skill.Id);
         if (categoryBadge is not null)
         {
-            nameRow.Children.Add(UiKit.Pill(categoryBadge, UiKit.AccentBrush));
+            var pill = UiKit.Pill(categoryBadge, UiKit.AccentBrush);
+            pill.Padding = new Thickness(6, 2, 6, 2);
+            if (pill.Child is TextBlock pillTb) pillTb.FontSize = 11;
+            nameRow.Children.Add(pill);
         }
         left.Children.Add(nameRow);
 
@@ -178,41 +172,37 @@ internal sealed class SkillsView : UserControl
         {
             var descText = UiKit.Muted(skill.Description, 13);
             descText.TextWrapping = TextWrapping.Wrap;
+            descText.TextTrimming = TextTrimming.CharacterEllipsis;
+            descText.MaxLines = 2;
             left.Children.Add(descText);
         }
 
-        // File path (muted)
+        // File path with inline copy button
+        var pathStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 4, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        
         var pathText = UiKit.Muted(Path.GetFileName(skill.FilePath), 11);
-        pathText.Margin = new Thickness(0, 2, 0, 0);
-        left.Children.Add(pathText);
-
-        card.Children.Add(left);
-
-        // Right: action buttons
-        var actions = new StackPanel { Orientation = Orientation.Vertical, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+        pathText.VerticalAlignment = VerticalAlignment.Center;
+        pathStack.Children.Add(pathText);
 
         var copyBtn = new Button
         {
-            Content = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 6,
-                Children =
-                {
-                    new FontIcon { Glyph = "\uE8C8", FontSize = 12 },
-                    UiKit.Text("Copy", 12)
-                }
-            },
-            Padding = new Thickness(10, 6, 10, 6),
-            CornerRadius = new CornerRadius(6),
-            MinHeight = 32
+            Content = new FontIcon { Glyph = "\uE8C8", FontSize = 12 },
+            Padding = new Thickness(6),
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(Colors.Transparent),
+            BorderThickness = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Center,
+            MinHeight = 24,
+            MinWidth = 24
         };
+        UiKit.AddHoverScale(copyBtn);
         AutomationProperties.SetName(copyBtn, $"Copy skill {skill.Name}");
         copyBtn.Click += async (_, _) => await CopySkillAsync(skill);
-        actions.Children.Add(copyBtn);
+        ToolTipService.SetToolTip(copyBtn, "Copy skill content");
+        pathStack.Children.Add(copyBtn);
 
-        Grid.SetColumn(actions, 1);
-        card.Children.Add(actions);
+        left.Children.Add(pathStack);
+        card.Children.Add(left);
 
         var container = UiKit.Card(card);
         container.Margin = new Thickness(0, 0, 0, 2);

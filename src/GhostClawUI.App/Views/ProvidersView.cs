@@ -84,22 +84,16 @@ internal sealed class ProvidersView : UserControl
 
         _bodyGrid = new Grid();
 
-        var defaultsBar = new Border
-        {
-            Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["LayerFillColorDefaultBrush"],
-            BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(12, 8, 12, 8),
-            Margin = new Thickness(0, 0, 0, 16)
-        };
         var defaultsStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
         defaultsStack.Children.Add(new TextBlock { Text = "Global Defaults", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
         _globalDefaultProvider.Width = 200;
-        defaultsStack.Children.Add(_globalDefaultProvider);
         _globalDefaultModel.Width = 200;
+        defaultsStack.Children.Add(_globalDefaultProvider);
         defaultsStack.Children.Add(_globalDefaultModel);
-        defaultsBar.Child = defaultsStack;
+
+        var defaultsBar = UiKit.Surface(defaultsStack);
+        defaultsBar.Padding = new Thickness(16, 12, 16, 12);
+        defaultsBar.Margin = new Thickness(0, 0, 0, 16);
 
         _listView = new Grid
         {
@@ -115,13 +109,33 @@ internal sealed class ProvidersView : UserControl
         Grid.SetRow(defaultsBar, 0);
         _listView.Children.Add(defaultsBar);
 
-        var addBtn = UiKit.PrimaryButton("Add provider", Symbol.Add, (_, _) => { ClearForm(); ShowDrawer(); });
-        addBtn.HorizontalAlignment = HorizontalAlignment.Left;
-        Grid.SetRow(addBtn, 1);
-        _listView.Children.Add(addBtn);
-
-        Grid.SetRow(_cards, 2);
+        Grid.SetRow(_cards, 1);
         _listView.Children.Add(_cards);
+
+        var addBtn = new Button
+        {
+            Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Children =
+                {
+                    new SymbolIcon(Symbol.Add) { Foreground = UiKit.SidebarMutedBrush },
+                    UiKit.Muted("Add provider", 14)
+                }
+            },
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1), // Representing dashed affordance
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(0, 16, 0, 16)
+        };
+        addBtn.Click += (_, _) => { ClearForm(); ShowDrawer(); };
+
+        Grid.SetRow(addBtn, 2);
+        _listView.Children.Add(addBtn);
 
         _bodyScrollViewer = new ScrollViewer
         {
@@ -366,7 +380,7 @@ internal sealed class ProvidersView : UserControl
 
         buttons.Children.Add(UiKit.Button("Edit", Symbol.Edit, (_, _) => { LoadIntoForm(provider); ShowDrawer(); }));
         // Remove button always visible
-        var removeBtn = UiKit.Button("Remove", Symbol.Delete, async (_, _) =>
+        var removeBtn = UiKit.DangerButton("Remove", Symbol.Delete, async (_, _) =>
         {
             var dialog = new ContentDialog
             {
@@ -738,20 +752,7 @@ internal sealed class ProvidersView : UserControl
         Grid.SetColumn(testButton, 1);
         row.Children.Add(testButton);
 
-        var removeButton = new Button
-        {
-            Content = new SymbolIcon(Symbol.Delete),
-            Width = 34,
-            Height = 34,
-            MinWidth = 34,
-            MinHeight = 34,
-            Padding = new Thickness(0),
-            CornerRadius = new CornerRadius(6),
-            // Hidden by default – shown on row hover
-            Visibility = Microsoft.UI.Xaml.Visibility.Visible
-        };
-        AutomationProperties.SetName(removeButton, $"Remove model {model}");
-        removeButton.Click += remove;
+        var removeButton = UiKit.DangerIconButton(Symbol.Delete, $"Remove model {model}", remove);
         Grid.SetColumn(removeButton, 2);
         row.Children.Add(removeButton);
 

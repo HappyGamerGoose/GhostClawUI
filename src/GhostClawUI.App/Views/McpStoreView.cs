@@ -58,13 +58,15 @@ internal sealed class McpStoreView : UserControl
                 new ColumnDefinition { Width = GridLength.Auto },
                 new ColumnDefinition { Width = GridLength.Auto }
             },
-            ColumnSpacing = 10
+            ColumnSpacing = 10,
+            VerticalAlignment = VerticalAlignment.Center
         };
 
-        var heading = new StackPanel { Spacing = 4 };
-        heading.Children.Add(UiKit.Text("MCPs", 24, FontWeights.SemiBold));
-        heading.Children.Add(UiKit.Muted("Manage and configure Model Context Protocol servers.", 14));
+        var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16, VerticalAlignment = VerticalAlignment.Center };
+        heading.Children.Add(UiKit.Text("MCP Store", 24, FontWeights.SemiBold));
+        
         _status.Foreground = UiKit.QuietTextBrush;
+        _status.VerticalAlignment = VerticalAlignment.Center;
         heading.Children.Add(_status);
         top.Children.Add(heading);
 
@@ -236,20 +238,16 @@ internal sealed class McpStoreView : UserControl
         var commandText = new TextBlock
         {
             Text = DisplayCommand(server),
-            FontSize = 11.5,
+            FontSize = 12,
             FontFamily = new FontFamily("Cascadia Mono, Consolas, Courier New"),
             TextTrimming = TextTrimming.CharacterEllipsis,
-            Foreground = ResourceBrush("TextFillColorSecondaryBrush", "#6B7280"),
+            Foreground = UiKit.SidebarMutedBrush,
             VerticalAlignment = VerticalAlignment.Center
         };
         var commandBorder = new Border
         {
             Child = commandText,
-            Padding = new Thickness(8, 4, 8, 4),
-            CornerRadius = new CornerRadius(5),
-            BorderThickness = new Thickness(1),
-            BorderBrush = ResourceBrush("CardStrokeColorDefaultBrush", "#D1D5DB"),
-            Background = ResourceBrush("SubtleFillColorSecondaryBrush", "#F3F4F6"),
+            Padding = new Thickness(0),
             VerticalAlignment = VerticalAlignment.Center
         };
         Grid.SetColumn(commandBorder, 1);
@@ -264,10 +262,16 @@ internal sealed class McpStoreView : UserControl
             : "Trusted";
 
         var meta = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
-        meta.Children.Add(UiKit.Pill(source, server.Installed ? UiKit.BrushFromHex("#16A34A") : UiKit.AccentBrush));
+        var sourcePill = UiKit.Pill(source, server.Installed ? UiKit.BrushFromHex("#16A34A") : UiKit.AccentBrush);
+        sourcePill.Padding = new Thickness(6, 2, 6, 2);
+        if (sourcePill.Child is TextBlock sourceTb) sourceTb.FontSize = 11;
+        meta.Children.Add(sourcePill);
         if (!string.IsNullOrWhiteSpace(server.Version))
         {
-            meta.Children.Add(UiKit.Pill(server.Version, UiKit.BrushFromHex("#64748B")));
+            var versionPill = UiKit.Pill(server.Version, UiKit.BrushFromHex("#64748B"));
+            versionPill.Padding = new Thickness(6, 2, 6, 2);
+            if (versionPill.Child is TextBlock versionTb) versionTb.FontSize = 11;
+            meta.Children.Add(versionPill);
         }
         Grid.SetColumn(meta, 2);
         panel.Children.Add(meta);
